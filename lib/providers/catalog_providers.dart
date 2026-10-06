@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/album.dart';
 import '../models/artist.dart';
+import '../models/beat_map.dart';
 import '../models/lyrics.dart';
 import '../models/playlist.dart';
 import '../models/track.dart';
@@ -27,8 +28,8 @@ final lyricsProvider = FutureProvider.family<Lyrics?, String>(
   (ref, videoId) => ref.watch(catalogRepositoryProvider).lyrics(videoId),
 );
 
-final beatGridProvider = Provider.family<BeatGrid, Track>(
-  (ref, track) => ref.watch(catalogRepositoryProvider).beatGrid(track),
+final beatMapProvider = FutureProvider.autoDispose.family<BeatMap, Track>(
+  (ref, track) => ref.watch(catalogRepositoryProvider).beatMap(track),
 );
 
 /// A YouTube playlist that is not in the library yet (preview → import).

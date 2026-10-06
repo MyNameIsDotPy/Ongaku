@@ -21,14 +21,3 @@ abstract class Lyrics with _$Lyrics {
   const factory Lyrics({required bool synced, required List<LyricLine> lines}) =
       _Lyrics;
 }
-
-/// Beat grid computed once by the backend so the client can animate to the
-/// rhythm without FFT or microphone permissions.
-@freezed
-abstract class BeatGrid with _$BeatGrid {
-  const BeatGrid._();
-
-  const factory BeatGrid({required double bpm}) = _BeatGrid;
-
-  Duration get beat => Duration(microseconds: (60e6 / bpm).round());
-}

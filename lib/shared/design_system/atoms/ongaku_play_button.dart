@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -254,11 +253,4 @@ class _PlayPausePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PlayPausePainter old) => old.t != t || old.color != color;
-}
-
-/// Utility for the reactive pulse: `exp(-dt * 7)` decay after each beat.
-double beatEnvelope(Duration position, Duration beat) {
-  if (beat == Duration.zero) return 0;
-  final since = position.inMicroseconds % beat.inMicroseconds;
-  return math.exp(-since / 1e6 * 7);
 }

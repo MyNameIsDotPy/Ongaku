@@ -1,6 +1,7 @@
 import '../../models/album.dart';
 import '../../models/api_error.dart';
 import '../../models/artist.dart';
+import '../../models/beat_map.dart';
 import '../../models/lyrics.dart';
 import '../../models/playlist.dart';
 import '../../models/search_results.dart';
@@ -112,8 +113,8 @@ class FakeCatalogRepository implements CatalogRepository {
   Future<Track?> track(String videoId) async => _data._safeTrack(videoId);
 
   @override
-  BeatGrid beatGrid(Track track) =>
-      BeatGrid(bpm: 88.0 + _hash(track.videoId) % 36);
+  Future<BeatMap> beatMap(Track track) async =>
+      BeatMap.steady(88.0 + _hash(track.videoId) % 36, track.duration);
 
   @override
   Future<Lyrics?> lyrics(String videoId) async {

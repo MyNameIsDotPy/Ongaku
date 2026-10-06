@@ -1,5 +1,6 @@
 import '../models/album.dart';
 import '../models/artist.dart';
+import '../models/beat_map.dart';
 import '../models/lyrics.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
@@ -21,7 +22,9 @@ abstract interface class CatalogRepository {
   /// Albums to fill the search landing ("Explorar tu catálogo").
   Future<List<Album>> explore();
   Future<Track?> track(String videoId);
-  BeatGrid beatGrid(Track track);
+
+  /// Where the beats fall and how loud the low end is (reactive visuals).
+  Future<BeatMap> beatMap(Track track);
 }
 
 /// Detects a YouTube playlist link (`list=` query parameter).

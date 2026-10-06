@@ -65,6 +65,7 @@ final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
       ..onNetwork = ref.read(youtubeReachableProvider.notifier).report;
     return LocalCatalogRepository(
       gateway,
+      beats: ref.watch(localServicesProvider)!.beats,
       libraryPlaylists: () => library.current.playlists,
     );
   }

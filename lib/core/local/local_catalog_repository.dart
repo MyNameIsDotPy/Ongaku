@@ -3,12 +3,14 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import '../../models/album.dart';
 import '../../models/api_error.dart';
 import '../../models/artist.dart';
+import '../../models/beat_map.dart';
 import '../../models/lyrics.dart';
 import '../../models/playlist.dart';
 import '../../models/search_results.dart';
 import '../../models/track.dart';
 import '../catalog_repository.dart';
 import '../fakes/sample_data.dart' show normalize;
+import 'beat_analysis.dart';
 import 'lrclib_lyrics.dart';
 import 'playlist_reader.dart';
 import 'youtube_gateway.dart';
@@ -25,11 +27,13 @@ class LocalCatalogRepository implements CatalogRepository {
     LrcLibLyrics? lyrics,
     PlaylistReader? reader,
     YoutubeMusicClient? music,
+    this._beats,
   }) : _lyrics = lyrics ?? LrcLibLyrics(),
        _reader = reader ?? PlaylistReader(),
        _music = music ?? YoutubeMusicClient();
 
   final YoutubeGateway _gateway;
+  final BeatAnalysis? _beats;
   final LrcLibLyrics _lyrics;
   final PlaylistReader _reader;
   final YoutubeMusicClient _music;
@@ -364,16 +368,11 @@ class LocalCatalogRepository implements CatalogRepository {
     }
   }
 
-  /// Tempo is unknown without analysis; a stable per-song estimate keeps the
-  /// visuals moving (the design proposes backend beat detection later).
+  /// Analysed from the song's audio; calm (no pulses) until it is ready
+  /// or when it cannot be analysed.
   @override
-  BeatGrid beatGrid(Track track) {
-    var h = 0;
-    for (final c in track.videoId.codeUnits) {
-      h = (h * 31 + c) & 0x7fffffff;
-    }
-    return BeatGrid(bpm: 92.0 + h % 32);
-  }
+  Future<BeatMap> beatMap(Track track) async =>
+      await _beats?.beatMap(track.videoId) ?? BeatMap.calm;
 
   /// Channels behind the songs, most frequent first, keeping those whose
   /// name matches the query (YouTube's channel search fails upstream).

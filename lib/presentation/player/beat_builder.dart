@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/beat_map.dart';
 import '../../models/track.dart';
 import '../../providers/catalog_providers.dart';
 import '../../providers/player_providers.dart';
@@ -32,9 +33,9 @@ class BeatLevels {
   static const rest = BeatLevels();
 }
 
-/// Rebuilds every frame with rhythm levels derived from the track's
-/// [BeatGrid] (backend-computed, per the design notes: no FFT, no mic).
-/// Stays at rest when paused or when reactive visuals are off.
+/// Rebuilds every frame with rhythm levels from the track's [BeatMap],
+/// analysed from its audio (no microphone). Calm until the map is ready;
+/// at rest when paused or when reactive visuals are off.
 class BeatBuilder extends ConsumerStatefulWidget {
   const BeatBuilder({
     super.key,
@@ -59,6 +60,7 @@ class _BeatBuilderState extends ConsumerState<BeatBuilder>
     with SingleTickerProviderStateMixin {
   late final Ticker _ticker = createTicker(_tick);
   BeatLevels _levels = BeatLevels.rest;
+  BeatMap _map = BeatMap.calm;
   Duration _last = Duration.zero;
   double _energy = 0, _beat = 0, _time = 0;
 
@@ -68,14 +70,11 @@ class _BeatBuilderState extends ConsumerState<BeatBuilder>
     final playing = ref.read(playerProvider).isPlaying;
     final reactive = OngakuMotionSettings.reactiveOf(context);
     final pos = ref.read(playerControllerProvider).position;
-    final grid = ref.read(beatGridProvider(widget.track));
     final k = playing && reactive ? 1.0 : 0.0;
-    final rawBeat = beatEnvelope(pos, grid.beat) * k;
-    // A slow swell per bar stands in for the bass envelope.
-    final bar = grid.beat.inMicroseconds * 4 / 1e6;
-    final swell =
-        0.45 + 0.3 * math.sin(pos.inMicroseconds / 1e6 / bar * math.pi);
-    _energy += ((swell + rawBeat * 0.4) * k - _energy) * 0.12;
+    final rawBeat = _map.beatAt(pos) * k;
+    // The song's low end drives the swell; a steady glow while unknown.
+    final swell = _map.energy.isEmpty ? 0.35 : 0.15 + 0.75 * _map.energyAt(pos);
+    _energy += ((swell + rawBeat * 0.3) * k - _energy) * 0.12;
     _beat += (rawBeat - _beat) * 0.35;
     _time += dt * (playing ? 1 + _energy * 2.2 : 0.35);
     setState(
@@ -110,6 +109,10 @@ class _BeatBuilderState extends ConsumerState<BeatBuilder>
   @override
   Widget build(BuildContext context) {
     _sync(ref.watch(playerProvider.select((s) => s.isPlaying)));
+    // Analyse only when the visuals will use it.
+    _map = OngakuMotionSettings.reactiveOf(context)
+        ? ref.watch(beatMapProvider(widget.track)).value ?? BeatMap.calm
+        : BeatMap.calm;
     return widget.builder(context, _levels, widget.child);
   }
 }
