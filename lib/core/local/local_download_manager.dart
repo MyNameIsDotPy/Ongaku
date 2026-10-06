@@ -125,7 +125,7 @@ class LocalDownloadManager implements DownloadManager {
     final existing = _files[t.videoId];
     if (existing != null) return File(existing).length();
     return _gateway((client) async {
-      final manifest = await client.videos.streams.getManifest(t.videoId);
+      final manifest = await audioManifest(client, t.videoId);
       final audio = manifest.audioOnly;
       if (audio.isEmpty) throw const ApiException(ApiErrorCode.unavailable);
       // Prefer m4a: every platform's decoder handles it.

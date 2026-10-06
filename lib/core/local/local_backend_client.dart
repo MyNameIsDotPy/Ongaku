@@ -19,7 +19,7 @@ class LocalBackendClient implements BackendClient {
     final watch = Stopwatch()..start();
     try {
       await _gateway((yt) async {
-        final m = await yt.videos.streams.getManifest(probeVideoId);
+        final m = await audioManifest(yt, probeVideoId);
         if (m.audioOnly.isEmpty) {
           throw const ApiException(ApiErrorCode.extractionFailed);
         }

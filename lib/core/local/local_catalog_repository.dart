@@ -13,6 +13,7 @@ import 'lrclib_lyrics.dart';
 import 'playlist_reader.dart';
 import 'youtube_gateway.dart';
 import 'youtube_mapping.dart';
+import 'youtube_music_client.dart';
 
 /// Catalog straight from YouTube on this device (no backend): search,
 /// albums (YouTube Music `OLAK5uy_` playlists), artists (channels), public
@@ -23,12 +24,100 @@ class LocalCatalogRepository implements CatalogRepository {
     required this.libraryPlaylists,
     LrcLibLyrics? lyrics,
     PlaylistReader? reader,
+    YoutubeMusicClient? music,
   }) : _lyrics = lyrics ?? LrcLibLyrics(),
-       _reader = reader ?? PlaylistReader();
+       _reader = reader ?? PlaylistReader(),
+       _music = music ?? YoutubeMusicClient();
 
   final YoutubeGateway _gateway;
   final LrcLibLyrics _lyrics;
   final PlaylistReader _reader;
+  final YoutubeMusicClient _music;
+
+  /// YouTube Music for songs, albums and artists; plain YouTube for
+  /// community playlists. Falls back to plain YouTube entirely if YouTube
+  /// Music does not answer.
+  @override
+  Future<SearchResults> search(String query) async {
+    final q = query.trim();
+    if (q.isEmpty) return const SearchResults();
+    // One failing section must not hide the others; only "offline" aborts.
+    Future<List<T>> soft<T>(Future<List<T>> Function() f) async {
+      try {
+        return await _gateway((_) => f());
+      } on ApiException catch (e) {
+        if (e.code == ApiErrorCode.backendOffline) rethrow;
+        return <T>[];
+      }
+    }
+
+    final results = await Future.wait<List<Object>>([
+      soft(() => _music.searchSongs(q)),
+      soft(() => _music.searchAlbums(q)),
+      soft(() => _music.searchArtists(q)),
+      _youtubePlaylists(q),
+    ]);
+    final songs = results[0].cast<Track>();
+    final albums = results[1].cast<Album>();
+    final artists = results[2].cast<Artist>();
+    final lists = results[3].cast<Playlist>();
+    if (songs.isEmpty && albums.isEmpty && artists.isEmpty) {
+      return _searchYoutube(q);
+    }
+    final n = normalize(q);
+    return SearchResults(
+      tracks: songs,
+      albums: albums,
+      artists: artists.take(6).toList(),
+      playlists: [
+        ...libraryPlaylists().where(
+          (p) => p.inLibrary && normalize(p.name).contains(n),
+        ),
+        ...lists,
+      ],
+    );
+  }
+
+  Future<List<Playlist>> _youtubePlaylists(String q) async {
+    try {
+      final r = await _searchYoutube(q);
+      return r.playlists.where((p) => !p.inLibrary).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  @override
+  Future<Album> album(String id) async {
+    final cached = _albumCache[id];
+    if (cached != null) return cached;
+    if (id.startsWith('MPRE')) {
+      return _albumCache[id] = await _gateway((_) => _music.album(id));
+    }
+    return _albumFromPlaylist(id);
+  }
+
+  @override
+  Future<Artist> artist(String id) async {
+    final cached = _artistCache[id];
+    if (cached != null) return cached;
+    try {
+      var (artist, more) = await _gateway((_) => _music.artist(id));
+      // The page lists five songs; the linked playlist has the rest.
+      if (more != null && artist.popular.length < 10) {
+        try {
+          final full = await _reader.tracks(more, limit: 10);
+          if (full.length > artist.popular.length) {
+            artist = artist.copyWith(popular: full);
+          }
+        } catch (_) {}
+      }
+      return _artistCache[id] = artist;
+    } on ApiException catch (e) {
+      if (e.code == ApiErrorCode.backendOffline) rethrow;
+      return _artistFromChannel(id);
+    }
+  }
 
   /// Songs of a playlist: the layout-tolerant reader first, the library's
   /// own parser as a fallback.
@@ -49,75 +138,76 @@ class LocalCatalogRepository implements CatalogRepository {
   final _albumCache = <String, Album>{};
   final _artistCache = <String, Artist>{};
 
-  @override
-  Future<SearchResults> search(String query) => _gateway((client) async {
-    final q = query.trim();
-    if (q.isEmpty) return const SearchResults();
-    final [mixed, lists] = await Future.wait([
-      client.search.searchContent(q),
-      client.search.searchContent(q, filter: yt.TypeFilters.playlist),
-    ]);
-    final tracks = <Track>[];
-    final artists = <Artist>[];
-    final albums = <Album>[];
-    final playlists = <Playlist>[];
-    final seenLists = <String>{};
-    for (final r in [...mixed, ...lists]) {
-      switch (r) {
-        case yt.SearchVideo() when !r.isLive && r.duration.isNotEmpty:
-          tracks.add(YoutubeMapping.fromSearch(r));
-        case yt.SearchChannel():
-          artists.add(
-            Artist(
-              id: r.id.value,
-              name: YoutubeMapping.artistName(r.name),
-              avatarUrl: YoutubeMapping.bestThumb(r.thumbnails),
-            ),
-          );
-        case yt.SearchPlaylist() when seenLists.add(r.id.value):
-          final cover = YoutubeMapping.bestThumb(r.thumbnails) ?? '';
-          if (YoutubeMapping.isAlbumId(r.id.value)) {
-            albums.add(
-              Album(
-                id: r.id.value,
-                title: _albumTitle(r.title),
-                artist: const ArtistRef(id: '', name: ''),
-                genre: '',
-                coverUrl: cover,
-              ),
-            );
-          } else {
-            playlists.add(
-              Playlist(
-                id: r.id.value,
-                name: r.title,
-                source: PlaylistSource.youtube,
-                sourceId: r.id.value,
-                createdAt: DateTime.now(),
-                inLibrary: false,
-                artworkUrl: cover.isEmpty ? null : cover,
-                declaredTrackCount: r.videoCount,
-              ),
-            );
+  /// Plain YouTube search (fallback when YouTube Music fails).
+  Future<SearchResults> _searchYoutube(String query) =>
+      _gateway((client) async {
+        final q = query.trim();
+        if (q.isEmpty) return const SearchResults();
+        final [mixed, lists] = await Future.wait([
+          client.search.searchContent(q),
+          client.search.searchContent(q, filter: yt.TypeFilters.playlist),
+        ]);
+        final tracks = <Track>[];
+        final artists = <Artist>[];
+        final albums = <Album>[];
+        final playlists = <Playlist>[];
+        final seenLists = <String>{};
+        for (final r in [...mixed, ...lists]) {
+          switch (r) {
+            case yt.SearchVideo() when !r.isLive && r.duration.isNotEmpty:
+              tracks.add(YoutubeMapping.fromSearch(r));
+            case yt.SearchChannel():
+              artists.add(
+                Artist(
+                  id: r.id.value,
+                  name: YoutubeMapping.artistName(r.name),
+                  avatarUrl: YoutubeMapping.bestThumb(r.thumbnails),
+                ),
+              );
+            case yt.SearchPlaylist() when seenLists.add(r.id.value):
+              final cover = YoutubeMapping.bestThumb(r.thumbnails) ?? '';
+              if (YoutubeMapping.isAlbumId(r.id.value)) {
+                albums.add(
+                  Album(
+                    id: r.id.value,
+                    title: _albumTitle(r.title),
+                    artist: const ArtistRef(id: '', name: ''),
+                    genre: '',
+                    coverUrl: cover,
+                  ),
+                );
+              } else {
+                playlists.add(
+                  Playlist(
+                    id: r.id.value,
+                    name: r.title,
+                    source: PlaylistSource.youtube,
+                    sourceId: r.id.value,
+                    createdAt: DateTime.now(),
+                    inLibrary: false,
+                    artworkUrl: cover.isEmpty ? null : cover,
+                    declaredTrackCount: r.videoCount,
+                  ),
+                );
+              }
+            default:
+              break;
           }
-        default:
-          break;
-      }
-    }
-    final n = normalize(q);
-    if (artists.isEmpty) artists.addAll(_artistsFrom(tracks, n));
-    return SearchResults(
-      tracks: tracks,
-      albums: albums,
-      artists: artists,
-      playlists: [
-        ...libraryPlaylists().where(
-          (p) => p.inLibrary && normalize(p.name).contains(n),
-        ),
-        ...playlists,
-      ],
-    );
-  });
+        }
+        final n = normalize(q);
+        if (artists.isEmpty) artists.addAll(_artistsFrom(tracks, n));
+        return SearchResults(
+          tracks: tracks,
+          albums: albums,
+          artists: artists,
+          playlists: [
+            ...libraryPlaylists().where(
+              (p) => p.inLibrary && normalize(p.name).contains(n),
+            ),
+            ...playlists,
+          ],
+        );
+      });
 
   @override
   Future<List<String>> suggestions(String query) async {
@@ -131,8 +221,8 @@ class LocalCatalogRepository implements CatalogRepository {
     }
   }
 
-  @override
-  Future<Album> album(String id) async {
+  /// Album from a YouTube playlist id (`OLAK5uy_…` or any list).
+  Future<Album> _albumFromPlaylist(String id) async {
     final cached = _albumCache[id];
     if (cached != null) return cached;
     return _albumCache[id] = await _gateway((client) async {
@@ -157,8 +247,8 @@ class LocalCatalogRepository implements CatalogRepository {
     });
   }
 
-  @override
-  Future<Artist> artist(String id) async {
+  /// Artist from the YouTube channel (fallback).
+  Future<Artist> _artistFromChannel(String id) async {
     final cached = _artistCache[id];
     if (cached != null) return cached;
     return _artistCache[id] = await _gateway((client) async {
@@ -208,7 +298,10 @@ class LocalCatalogRepository implements CatalogRepository {
 
   @override
   Future<Playlist> youtubePlaylist(String idOrUrl) => _gateway((client) async {
-    final id = youtubePlaylistId(idOrUrl) ?? idOrUrl;
+    final id = (youtubePlaylistId(idOrUrl) ?? idOrUrl).replaceFirst(
+      RegExp('^VL'),
+      '',
+    );
     final list = await client.playlists.get(id);
     final tracks = await _playlistTracks(client, id);
     return Playlist(

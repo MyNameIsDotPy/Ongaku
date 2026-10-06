@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:youtube_explode_dart/js_challenge.dart';
 import 'package:youtube_explode_dart/solvers.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
 import '../../models/api_error.dart';
 
@@ -93,4 +94,19 @@ Future<String?> findExecutable(String name) async {
     if (await f.exists()) return f.path;
   }
   return null;
+}
+
+/// Audio manifest, fast path first: the `androidSdkless` client without the
+/// watch page answers in ~0.3 s; the full lookup (watch page + several
+/// clients) takes seconds and is kept as a fallback (RNF-02).
+Future<yt.StreamManifest> audioManifest(yt.YoutubeExplode client, String videoId) async {
+  try {
+    final m = await client.videos.streams.getManifest(
+      videoId,
+      ytClients: [yt.YoutubeApiClient.androidSdkless],
+      requireWatchPage: false,
+    );
+    if (m.audioOnly.isNotEmpty) return m;
+  } catch (_) {}
+  return client.videos.streams.getManifest(videoId);
 }

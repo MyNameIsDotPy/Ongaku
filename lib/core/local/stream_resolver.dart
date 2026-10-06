@@ -34,7 +34,7 @@ class StreamResolver {
     Uri url;
     try {
       url = await _gateway((yt) async {
-        final manifest = await yt.videos.streams.getManifest(track.videoId);
+        final manifest = await audioManifest(yt, track.videoId);
         final audio = manifest.audioOnly;
         if (audio.isEmpty) throw const ApiException(ApiErrorCode.unavailable);
         final sorted = audio.sortByBitrate(); // highest first
