@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -44,14 +45,29 @@ class LiquidAura extends StatelessWidget {
   }
 }
 
+/// The blobs are drawn by `shaders/liquid_aura.frag` in a single pass;
+/// until it loads (first frame) only the base colour shows.
 class _AuraPainter extends CustomPainter {
-  _AuraPainter(this.palette, this.t, this.energy, this.beat, this.ripple);
+  _AuraPainter(this.palette, this.t, this.energy, this.beat, this.ripple)
+    : super(repaint: _shader);
 
   final List<Color> palette;
   final double t;
   final double energy;
   final double beat;
   final double? ripple;
+
+  static final _shader = ValueNotifier<ui.FragmentShader?>(null);
+  static bool _requested = false;
+
+  static void _load() {
+    if (_requested) return;
+    _requested = true;
+    ui.FragmentProgram.fromAsset('shaders/liquid_aura.frag').then(
+      (p) => _shader.value = p.fragmentShader(),
+      onError: (Object _) => _requested = false,
+    );
+  }
 
   static const _blobs = [
     (0.0, 0.11, 0.42, 0),
@@ -63,45 +79,50 @@ class _AuraPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    _load();
     final colors = palette.isEmpty
         ? const [Color(0xFF5A6EA0), Color(0xFF3C466E), Color(0xFF1E1E28)]
         : palette;
-    final base = colors[colors.length - 1];
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()
-        ..color = Color.fromARGB(
-          255,
-          (base.r * 255 * 0.35).round(),
-          (base.g * 255 * 0.35).round(),
-          (base.b * 255 * 0.35).round(),
-        ),
-    );
-    final w = size.width, h = size.height;
-    for (var i = 0; i < _blobs.length; i++) {
-      final (ph, sp, r, ci) = _blobs[i];
-      final tt = t * sp;
-      final x =
-          w * (0.5 + 0.36 * math.sin(tt * 0.9 + ph) * math.cos(tt * 0.37 + i));
-      final y = h * (0.5 + 0.34 * math.cos(tt * 0.7 + ph * 1.3));
-      final radius = math.max(w, h) * r * (1 + energy * 0.5 + beat * 0.18);
-      final c = colors[ci % colors.length];
-      final center = Offset(x, y);
-      canvas.drawCircle(
-        center,
-        radius,
+    final last = colors[colors.length - 1];
+    final base = [last.r * 0.35, last.g * 0.35, last.b * 0.35];
+    final shader = _shader.value;
+    if (shader == null) {
+      canvas.drawRect(
+        Offset.zero & size,
         Paint()
-          ..blendMode = BlendMode.screen
-          ..shader = RadialGradient(
-            colors: [
-              c.withValues(alpha: (0.7 + beat * 0.2).clamp(0, 1)),
-              c.withValues(alpha: 0),
-            ],
-          ).createShader(Rect.fromCircle(center: center, radius: radius)),
+          ..color = Color.from(
+            alpha: 1,
+            red: base[0],
+            green: base[1],
+            blue: base[2],
+          ),
       );
+    } else {
+      final w = size.width, h = size.height;
+      var i = 0;
+      void put(double v) => shader.setFloat(i++, v);
+      base.forEach(put);
+      put((0.7 + beat * 0.2).clamp(0, 1));
+      for (var b = 0; b < _blobs.length; b++) {
+        final (ph, sp, r, _) = _blobs[b];
+        final tt = t * sp;
+        put(
+          w * (0.5 + 0.36 * math.sin(tt * 0.9 + ph) * math.cos(tt * 0.37 + b)),
+        );
+        put(h * (0.5 + 0.34 * math.cos(tt * 0.7 + ph * 1.3)));
+        put(math.max(w, h) * r * (1 + energy * 0.5 + beat * 0.18));
+      }
+      for (final (_, _, _, ci) in _blobs) {
+        final c = colors[ci % colors.length];
+        put(c.r);
+        put(c.g);
+        put(c.b);
+      }
+      canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
     }
     if (ripple != null && ripple! < 1) {
       final r = ripple!;
+      final w = size.width, h = size.height;
       canvas.drawCircle(
         Offset(w / 2, h * 0.42),
         math.max(w, h) * r,
