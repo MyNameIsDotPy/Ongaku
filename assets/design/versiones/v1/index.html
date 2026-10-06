@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plan de vistas · Onda</title>
+  <style>
+    /* ─── tokens ─────────────────────────────────────────────────────────
+       Six variables. Bind them to the active DESIGN.md and stop.
+       Do not introduce raw hex anywhere else in this file. */
+    :root {
+      --bg:      oklch(99% 0.002 240);
+      --surface: oklch(100% 0 0);
+      --fg:      oklch(18% 0.012 250);
+      --muted:   oklch(50% 0.012 250);
+      --border:  oklch(92% 0.005 250);
+      --accent:  oklch(58% 0.18 255);   /* one accent — used at most 2× per screen */
+
+      /* derived — do not change */
+      --accent-soft: color-mix(in oklch, var(--accent) 14%, transparent);
+      --fg-soft:     color-mix(in oklch, var(--fg) 6%, transparent);
+
+      /* type — display = serif (default), body = sans, mono for numerics */
+      --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      --font-body:    -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+      --font-mono:    ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+      /* scale — clamp() so it works at 1280, 1440, 1920 without media queries */
+      --fs-h1: clamp(44px, 6vw, 76px);
+      --fs-h2: clamp(32px, 4vw, 48px);
+      --fs-h3: 22px;
+      --fs-lead: 19px;
+      --fs-body: 16px;
+      --fs-meta: 13px;
+
+      /* spacing — 8-point grid */
+      --gap-xs: 8px;
+      --gap-sm: 12px;
+      --gap-md: 20px;
+      --gap-lg: 32px;
+      --gap-xl: 56px;
+      --gap-2xl: 96px;
+      --container: 1120px;
+      --gutter: 32px;
+
+      --radius: 10px;
+      --radius-lg: 16px;
+    }
+
+    /* ─── reset & base ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-body);
+      font-size: var(--fs-body);
+      line-height: 1.55;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+    img, svg { display: block; max-width: 100%; }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; }
+    p { text-wrap: pretty; }
+    h1, h2, h3, h4 { text-wrap: balance; }
+
+    /* ─── layout primitives ─────────────────────────────────────────── */
+    .container {
+      max-width: var(--container);
+      margin-inline: auto;
+      padding-inline: var(--gutter);
+    }
+    .section {
+      padding-block: clamp(48px, 8vw, var(--gap-2xl));
+    }
+    .section + .section { border-top: 1px solid var(--border); }
+    .stack { display: flex; flex-direction: column; }
+    .stack > * + * { margin-top: var(--gap-md); }
+    .row { display: flex; align-items: center; gap: var(--gap-md); }
+    .row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--gap-md); }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--gap-lg); }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap-lg); }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap-md); }
+    .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: var(--gap-xl); align-items: start; }
+    .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: var(--gap-xl); align-items: start; }
+    @media (max-width: 920px) {
+      .grid-2, .grid-3, .grid-4, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; }
+    }
+
+    /* ─── type ──────────────────────────────────────────────────────── */
+    .h1, h1 { font-family: var(--font-display); font-size: var(--fs-h1); line-height: 1.04; letter-spacing: -0.02em; margin: 0; }
+    .h2, h2 { font-family: var(--font-display); font-size: var(--fs-h2); line-height: 1.1; letter-spacing: -0.015em; margin: 0; }
+    .h3, h3 { font-size: var(--fs-h3); font-weight: 600; line-height: 1.3; letter-spacing: -0.005em; margin: 0; }
+    .lead   { font-size: var(--fs-lead); line-height: 1.55; color: var(--muted); max-width: 60ch; margin: 0; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0 0 var(--gap-md);
+    }
+    .meta { font-family: var(--font-mono); font-size: var(--fs-meta); color: var(--muted); }
+    .num  { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+    /* ─── chrome: nav + footer ──────────────────────────────────────── */
+    .topnav {
+      position: sticky; top: 0; z-index: 10;
+      background: color-mix(in oklch, var(--bg) 92%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topnav-inner { display: flex; align-items: center; justify-content: space-between; padding-block: 14px; }
+    .topnav .logo { font-family: var(--font-display); font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+    .topnav nav { display: flex; gap: var(--gap-lg); }
+    .topnav nav a { font-size: 14px; color: var(--muted); }
+    .topnav nav a:hover { color: var(--fg); }
+    .pagefoot { padding-block: var(--gap-xl); color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); }
+    .pagefoot .row-between { flex-wrap: wrap; gap: var(--gap-md); }
+
+    /* ─── buttons ───────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 20px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+      transition: transform 0.05s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+    .btn-primary:hover { background: color-mix(in oklch, var(--accent) 88%, black); }
+    .btn-secondary { background: transparent; color: var(--fg); border-color: var(--border); }
+    .btn-secondary:hover { border-color: var(--fg); }
+    .btn-ghost { background: transparent; color: var(--fg); border-color: transparent; padding-inline: 8px; }
+    .btn-ghost:hover { color: var(--accent); }
+    .btn-arrow::after { content: '→'; transition: transform 0.15s ease; }
+    .btn-arrow:hover::after { transform: translateX(2px); }
+
+    /* ─── card / surface ────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+    }
+    .card-flat { background: transparent; border: 0; padding: 0; }
+    .card-rule { background: transparent; border: 0; border-top: 1px solid var(--fg); padding: 24px 0 0; border-radius: 0; }
+
+    /* ─── feature cell (icon + h3 + p) ──────────────────────────────── */
+    .feature .feature-mark {
+      width: 36px; height: 36px;
+      display: grid; place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--accent);
+      margin-bottom: var(--gap-md);
+    }
+    .feature .feature-mark svg { width: 18px; height: 18px; }
+    .feature h3 { margin-bottom: 6px; }
+    .feature p  { margin: 0; color: var(--muted); font-size: 15px; }
+
+    /* ─── stat (big number + label) ─────────────────────────────────── */
+    .stat .stat-num {
+      font-family: var(--font-display);
+      font-size: clamp(56px, 8vw, 96px);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .stat .stat-label { color: var(--muted); font-size: 14px; margin-top: 8px; max-width: 24ch; }
+    .stat .stat-unit  { font-size: 0.5em; opacity: 0.7; margin-left: 2px; }
+
+    /* ─── quote / testimonial ───────────────────────────────────────── */
+    .quote {
+      font-family: var(--font-display);
+      font-size: clamp(24px, 2.6vw, 32px);
+      line-height: 1.32;
+      letter-spacing: -0.01em;
+      max-width: 28ch;
+    }
+    .quote-author { color: var(--muted); font-size: 14px; margin-top: var(--gap-md); }
+    .quote-mark   {
+      font-family: var(--font-display);
+      font-size: 140px; line-height: 0.7;
+      color: var(--accent); opacity: 0.18;
+      margin-bottom: -28px;
+    }
+
+    /* ─── pill / badge / tag ────────────────────────────────────────── */
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .tag {
+      display: inline-flex; align-items: center;
+      padding: 4px 10px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 12px;
+    }
+
+    /* ─── form field ────────────────────────────────────────────────── */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 13px; color: var(--muted); }
+    .input, .textarea {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--fg);
+      font: inherit;
+      font-size: 15px;
+    }
+    .input:focus, .textarea:focus {
+      outline: 2px solid var(--accent-soft);
+      border-color: var(--accent);
+    }
+    .textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
+
+    /* ─── table (data-style, no chrome) ─────────────────────────────── */
+    .ds-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .ds-table th, .ds-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+    .ds-table th { color: var(--muted); font-weight: 500; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .ds-table tbody tr:hover { background: var(--fg-soft); }
+    .ds-table .num-col { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+
+    /* ─── image placeholder (DS-tinted block, never broken <img>) ──── */
+    .ph-img {
+      background:
+        linear-gradient(135deg, var(--accent-soft), var(--fg-soft)),
+        var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      aspect-ratio: 16 / 10;
+      display: grid; place-items: center;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+    }
+    .ph-img.square    { aspect-ratio: 1 / 1; }
+    .ph-img.portrait  { aspect-ratio: 3 / 4; }
+    .ph-img.wide      { aspect-ratio: 16 / 9; }
+    .content-img {
+      display: block;
+      max-width: 100%;
+      max-height: min(70vh, 720px);
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      justify-self: center;
+      border-radius: var(--radius-lg);
+    }
+
+    /* ─── divider ───────────────────────────────────────────────────── */
+    .rule  { border: 0; border-top: 1px solid var(--border); margin: 0; }
+    .rule-strong { border: 0; border-top: 1px solid var(--fg); margin: 0; }
+
+    /* ─── hero variants used by layouts.md ──────────────────────────── */
+    .hero          { padding-block: clamp(80px, 12vw, 160px); }
+    .hero-center   { text-align: center; max-width: 32ch; margin-inline: auto; }
+    .hero h1       { margin-bottom: var(--gap-md); }
+    .hero .lead    { margin-bottom: var(--gap-lg); }
+    .hero-cta      { display: inline-flex; gap: var(--gap-sm); flex-wrap: wrap; }
+    .hero-center .hero-cta { justify-content: center; }
+    .hero-split    { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-2xl); align-items: center; }
+    @media (max-width: 920px) { .hero-split { grid-template-columns: 1fr; } }
+
+    /* ─── log row (newsletter, blog list, changelog) ────────────────── */
+    .log-row { display: grid; grid-template-columns: 120px 1fr 100px; gap: var(--gap-lg); padding: 22px 0; border-top: 1px solid var(--border); align-items: baseline; }
+    .log-row .meta { color: var(--muted); }
+    .log-row h3 { font-size: 19px; }
+    .log-row .pull { text-align: right; }
+    /* ─── extras del mapa de vistas ─── */
+    h1, .h1 { font-weight: 720; }
+    h2, .h2 { font-weight: 680; }
+    .topnav .logo { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-display); }
+    .topnav .logo i { width: 24px; height: 24px; border-radius: 7px; background: var(--fg); display: inline-grid; place-items: center; }
+    .topnav .logo i svg { width: 15px; height: 15px; stroke: var(--bg); fill: none; stroke-width: 1.8; }
+    .btn:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .stage-frame { position: relative; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--surface); aspect-ratio: 1440 / 900; box-shadow: 0 30px 60px -36px color-mix(in oklch, var(--fg) 45%, transparent); }
+    .stage-frame iframe { position: absolute; top: 0; left: 0; width: 1440px; height: 900px; border: 0; transform-origin: 0 0; }
+    .stage-cap { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+    .wire { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 10px; display: grid; gap: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+    .wire > div, .wire .z { border: 1px dashed color-mix(in oklch, var(--fg) 22%, var(--border)); border-radius: 8px; padding: 8px; display: grid; place-items: center; text-align: center; }
+    .wire .z.strong { border-style: solid; border-color: var(--fg); color: var(--fg); }
+    .wire-desk { grid-template-columns: 0.8fr 2.4fr 1fr; grid-template-rows: 150px 34px; }
+    .wire-desk .bar { grid-column: 1 / -1; }
+    .wire-mob { width: 170px; grid-template-rows: 150px 30px 30px; justify-self: center; border-radius: 22px; }
+    .view-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1.25fr) 150px; gap: var(--gap-lg); padding: 22px 0; border-top: 1px solid var(--border); align-items: baseline; }
+    .view-row h3 { font-size: 19px; }
+    .view-row p { margin: 0; color: var(--muted); font-size: 15px; }
+    .view-row .go { justify-self: end; font-size: 14px; font-weight: 550; display: inline-flex; gap: 6px; }
+    .view-row .go:hover { text-decoration: underline; text-underline-offset: 3px; }
+    .rf { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+    .flow .step { padding: 8px 12px; border: 1px solid var(--border); border-radius: 999px; font-size: 14px; background: var(--surface); }
+    .flow .arr { color: var(--muted); font-family: var(--font-mono); }
+    .ds-table a { font-family: var(--font-mono); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; color: var(--fg); }
+    .ds-table td { vertical-align: top; }
+    .motion-spec { display: grid; grid-template-columns: 140px 1fr; gap: 6px 20px; font-size: 14px; }
+    .motion-spec dt { font-family: var(--font-mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+    .motion-spec dd { margin: 0; }
+    .note { padding: 18px 20px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+    .note h3 { font-size: 17px; margin-bottom: 6px; }
+    .note p { margin: 0; color: var(--muted); font-size: 15px; }
+    .note code, .view-row code, .motion-spec code { font-family: var(--font-mono); font-size: 0.88em; background: var(--fg-soft); padding: 1px 5px; border-radius: 4px; color: var(--fg); }
+    @media (max-width: 920px) {
+      .view-row { grid-template-columns: 32px 1fr; gap: 8px 14px; }
+      .view-row > p, .view-row .go { grid-column: 2; justify-self: start; }
+      .topnav nav { display: none; }
+      .motion-spec { grid-template-columns: 1fr; }
+      .ds-table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topnav" data-od-id="topnav">
+    <div class="container topnav-inner">
+      <span class="logo"><i><svg viewBox="0 0 24 24"><path d="M3 12c2 0 2-5 4.5-5S10 17 12 17s2.5-10 4.5-10S19 12 21 12"/></svg></i>Onda · plan de vistas</span>
+      <nav>
+        <a href="#vistas">Vistas</a>
+        <a href="#flujos">Flujos</a>
+        <a href="#estados">Estados</a>
+        <a href="#movimiento">Movimiento</a>
+      </nav>
+      <a class="btn btn-secondary" href="app.html#/inicio">Abrir prototipo</a>
+    </div>
+  </header>
+
+  <main id="content">
+    <section class="section hero" data-od-id="hero" style="padding-bottom: 56px;">
+      <div class="container" style="text-align:center">
+        <div class="hero-center">
+          <p class="eyebrow">Plan de vistas · v1 · Android y PC</p>
+          <h1>Diez pantallas y un reproductor que se mueve con la música.</h1>
+          <p class="lead" style="margin-inline:auto">Sale directo del documento de requerimientos: las 10 pantallas, el mini-reproductor y los cuatro flujos clave. Encima va una capa de movimiento que reacciona al audio y a la letra.</p>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="app.html#/inicio" data-od-id="hero-cta">Abrir el prototipo navegable</a>
+            <a class="btn btn-ghost btn-arrow" href="#vistas">Ver el inventario</a>
+          </div>
+        </div>
+        <div style="margin-top:56px;text-align:left" data-od-id="hero-preview">
+          <div class="stage-frame" id="stage"><iframe src="app.html#/inicio" title="Vista previa en vivo del prototipo" loading="lazy" tabindex="-1"></iframe></div>
+          <div class="stage-cap"><span class="meta">Vista previa en vivo de app.html · escritorio 1440 × 900</span><span class="meta">Toca ▶ en el prototipo para oír la pista de demostración</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-od-id="navigation">
+      <div class="container grid-1-2">
+        <div>
+          <p class="eyebrow" style="color:var(--muted)">Arquitectura de navegación</p>
+          <h2>Un esqueleto, dos formas.</h2>
+          <p class="lead" style="margin-top:16px">En PC se usan las tres zonas que pide el documento. En Android se rediseña: pestañas abajo y un mini-reproductor flotante encima de ellas. El reproductor completo es una hoja que sube desde ese mini-reproductor.</p>
+        </div>
+        <div class="grid-2" style="align-items:end">
+          <div class="stack" style="gap:10px">
+            <div class="wire wire-desk" aria-label="Esquema de escritorio"><div>Navegación<br>lateral</div><div class="z strong">Contenido</div><div>Cola<br>(opcional)</div><div class="bar z">Barra de reproducción</div></div>
+            <span class="meta">PC · Windows y Linux · ≥ 821 px</span>
+          </div>
+          <div class="stack" style="gap:10px">
+            <div class="wire wire-mob" aria-label="Esquema móvil"><div class="z strong">Contenido</div><div>Mini-reproductor</div><div>Inicio · Buscar · Biblioteca · Ajustes</div></div>
+            <span class="meta" style="text-align:center">Android · ≤ 820 px</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="vistas" data-od-id="view-inventory">
+      <div class="container">
+        <p class="eyebrow" style="color:var(--muted)">Inventario · 10 pantallas + 3 componentes</p>
+        <h2 style="max-width:22ch">Qué muestra cada vista y qué requerimiento cubre.</h2>
+        <div style="margin-top:40px">
+          <div class="view-row" data-od-id="view-conexion"><span class="num meta">01</span><div><h3>Conexión</h3><div class="rf"><span class="tag">RF-28</span></div></div><p>Primer arranque en tres pasos: URL del backend y token con prueba de conexión; permisos de notificaciones y batería; resumen de lo sincronizado.</p><a class="go" href="app.html#/conexion">Abrir →</a></div>
+          <div class="view-row" data-od-id="view-inicio"><span class="num meta">02</span><div><h3>Inicio</h3><div class="rf"><span class="tag">RF-16</span><span class="tag">RF-21</span></div></div><p>Seguir escuchando, con la posición restaurada de la última canción. Debajo: accesos a favoritos y descargas, tus playlists y lo escuchado recientemente.</p><a class="go" href="app.html#/inicio">Abrir →</a></div>
+          <div class="view-row" data-od-id="view-buscar"><span class="num meta">03</span><div><h3>Búsqueda</h3><div class="rf"><span class="tag">RF-01–03</span><span class="tag">RF-06</span></div></div><p>Sugerencias mientras escribes (navegables con el teclado) y recientes borrables. Resultados filtrables por tipo. Si pegas una URL de YouTube, se detecta y ofrece vista previa.</p><a class="go" href="app.html#/buscar">Abrir →</a></div>
+          <div class="view-row" data-od-id="view-album"><span class="num meta">04</span><div><h3>Álbum</h3><div class="rf"><span class="tag">RF-04</span></div></div><p>Portada, año, pistas y duración total. Permite reproducir, mezclar en aleatorio, descargar con progreso por canción y guardar como playlist. El fondo toma el color de la portada.</p><a class="go" href="app.html#/album/deja">Abrir →</a></div>
+          <div class="view-row" data-od-id="view-artista"><span class="num meta">05</span><div><h3>Artista</h3><div class="rf"><span class="tag">RF-05</span><span class="tag">RF-15</span></div></div><p>Foto, populares, álbumes y sencillos. Reproduce los populares o arranca la radio del artista.</p><a class="go" href="app.html#/artista/bomba-estereo">Abrir →</a></div>
+          <div class="view-row" data-od-id="view-playlist"><span class="num meta">06</span><div><h3>Playlist</h3><div class="rf"><span class="tag">RF-06</span><span class="tag">RF-19</span><span class="tag">RF-22</span></div></div><p>Una propia se puede renombrar, reordenar arrastrando y vaciar con deshacer. Una de YouTube se ve primero en vista previa y luego se importa como copia editable.</p><a class="go" href="app.html#/playlist/pl-transmi">Abrir →</a></div>
+          <div class="view-row" data-od-id="view-biblioteca"><span class="num meta">07</span><div><h3>Biblioteca</h3><div class="rf"><span class="tag">RF-19–21</span><span class="tag">RF-25–26</span></div></div><p>Cuatro pestañas con indicador deslizante: playlists (crear y ordenar), favoritos, descargas con espacio usado e historial por día y dispositivo.</p><a class="go" href="app.html#/biblioteca/historial">Abrir →</a></div>
+          <div class="view-row" data-od-id="view-reproductor"><span class="num meta">08</span><div><h3>Reproductor</h3><div class="rf"><span class="tag">RF-07–18</span><span class="tag">RF-30</span></div></div><p>Hoja inmersiva con aura reactiva y letra sincronizada palabra por palabra. Controles completos, favorito, temporizador de apagado y radio. En móvil cambia entre Portada, Letra y Cola.</p><a class="go" href="app.html#/inicio">Abrir y tocar la barra →</a></div>
+          <div class="view-row" data-od-id="view-cola"><span class="num meta">09</span><div><h3>Cola</h3><div class="rf"><span class="tag">RF-08</span></div></div><p>Muestra lo que suena, lo que va a continuación y el resto. Se reordena arrastrando, se quita, se limpia o se guarda como playlist. En PC es la columna derecha; en móvil, una pestaña del reproductor.</p><a class="go" href="app.html#/inicio">Abrir con el icono de cola →</a></div>
+          <div class="view-row" data-od-id="view-ajustes"><span class="num meta">10</span><div><h3>Ajustes</h3><div class="rf"><span class="tag">RF-24</span><span class="tag">RF-26–27</span><span class="tag">RNF-07</span></div></div><p>Backend y prueba de conexión, calidad para Wi-Fi y datos, descargas solo con Wi-Fi y límite de espacio. También tema, nivel de animación, respaldo JSON y caché.</p><a class="go" href="app.html#/ajustes">Abrir →</a></div>
+          <div class="view-row" data-od-id="view-shared"><span class="num meta">+</span><div><h3>Compartidos</h3><div class="rf"><span class="tag">Mini-reproductor</span><span class="tag">Fila de canción</span><span class="tag">Indicador de conexión</span></div></div><p>El mini-reproductor existe en todas las vistas. La fila de canción trae favorito y un menú de 8 acciones; el ecualizador de la fila activa se mueve con el audio. El indicador de conexión vive en la barra lateral.</p><a class="go" href="app.html#/album/ayo">Ver una fila →</a></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="flujos" data-od-id="flows">
+      <div class="container">
+        <p class="eyebrow" style="color:var(--muted)">Flujos clave a prototipar primero</p>
+        <h2>Los cuatro recorridos del documento, navegables.</h2>
+        <div class="grid-2" style="margin-top:40px;gap:var(--gap-xl) var(--gap-lg)">
+          <div class="card-rule" data-od-id="flow-1"><h3>1 · Buscar y que suene en el bolsillo <span class="meta">CU-01</span></h3><div class="flow"><span class="step">Buscar</span><span class="arr">→</span><span class="step">Tocar canción</span><span class="arr">→</span><span class="step">Suena</span><span class="arr">→</span><span class="step">Bloquear pantalla</span><span class="arr">→</span><span class="step">Controlar desde la notificación</span></div><p class="meta" style="margin-top:12px">En Chrome Android, el prototipo publica metadatos y controles con MediaSession.</p></div>
+          <div class="card-rule" data-od-id="flow-2"><h3>2 · Importar una playlist de YouTube <span class="meta">CU-04</span></h3><div class="flow"><span class="step">Pegar URL en Buscar</span><span class="arr">→</span><span class="step">Vista previa</span><span class="arr">→</span><span class="step">Importar</span><span class="arr">→</span><span class="step">Aparece en la biblioteca</span></div><p class="meta" style="margin-top:12px">Prueba con <span class="num">youtube.com/playlist?list=PLx</span> en el buscador.</p></div>
+          <div class="card-rule" data-od-id="flow-3"><h3>3 · Agregar a playlist sin salir</h3><div class="flow"><span class="step">Menú ⋯ de la fila</span><span class="arr">→</span><span class="step">Agregar a playlist</span><span class="arr">→</span><span class="step">Existente o nueva</span><span class="arr">→</span><span class="step">Aviso con “Ver”</span></div></div>
+          <div class="card-rule" data-od-id="flow-4"><h3>4 · Descargar y escuchar sin señal <span class="meta">CU-05</span></h3><div class="flow"><span class="step">Descargar playlist</span><span class="arr">→</span><span class="step">Progreso por canción</span><span class="arr">→</span><span class="step">Modo avión</span><span class="arr">→</span><span class="step">Sigue sonando</span></div><p class="meta" style="margin-top:12px">Simula el modo avión con el estado “sin backend” de la tabla de abajo.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="estados" data-od-id="states">
+      <div class="container">
+        <p class="eyebrow" style="color:var(--muted)">Estados obligatorios</p>
+        <h2 style="max-width:24ch">Cada vista con datos tiene sus cuatro estados.</h2>
+        <div style="margin-top:32px">
+          <table class="ds-table" data-od-id="states-table">
+            <thead><tr><th>Vista</th><th>Cargando</th><th>Vacío</th><th>Error</th><th>Sin backend</th></tr></thead>
+            <tbody>
+              <tr><td>Inicio</td><td><a href="app.html#/inicio?estado=cargando">skeleton</a></td><td><a href="app.html#/inicio?estado=vacio">vacío</a></td><td><a href="app.html#/inicio?estado=error">reintentar</a></td><td><a href="app.html#/inicio?estado=offline">caché</a></td></tr>
+              <tr><td>Búsqueda</td><td>—</td><td><a href="app.html#/buscar">sin resultados</a></td><td><a href="app.html#/buscar?estado=error">reintentar</a></td><td><a href="app.html#/buscar?estado=offline">desactivada</a></td></tr>
+              <tr><td>Álbum · Artista</td><td><a href="app.html#/album/ram?estado=cargando">skeleton</a></td><td>—</td><td><a href="app.html#/album/ram?estado=error">reintentar</a></td><td><a href="app.html#/album/ram?estado=offline">no descargadas atenuadas</a></td></tr>
+              <tr><td>Playlist</td><td><a href="app.html#/playlist/pl-code?estado=cargando">skeleton</a></td><td><a href="app.html#/playlist/pl-code?estado=vacio">vacía</a></td><td><a href="app.html#/playlist/pl-code?estado=error">reintentar</a></td><td><a href="app.html#/playlist/pl-transmi?estado=offline">descargada, suena</a></td></tr>
+              <tr><td>Biblioteca</td><td><a href="app.html#/biblioteca?estado=cargando">skeleton</a></td><td><a href="app.html#/biblioteca/favoritos?estado=vacio">vacío por pestaña</a></td><td><a href="app.html#/biblioteca?estado=error">reintentar</a></td><td><a href="app.html#/biblioteca/descargas?estado=offline">descargas</a></td></tr>
+            </tbody>
+          </table>
+          <p class="meta" style="margin-top:14px">El estado se mantiene al navegar por el prototipo. “Reintentar” lo limpia. Si abres el enlace con <span class="num">?estado=</span> vacío, vuelves a los datos normales.</p>
+        </div>
+        <div class="grid-3" style="margin-top:48px">
+          <div class="note" data-od-id="player-states"><h3>Estados del reproductor</h3><p><code>loading</code> y <code>buffering</code> muestran un spinner en el botón de play. <code>error</code> avisa y salta a la siguiente pista (RNF-12); se prueba con “Mamo Manuel Nieves” en el álbum Deja. <code>completed</code> ofrece repetir y <code>idle</code> retoma donde ibas.</p></div>
+          <div class="note"><h3>Atajos de PC</h3><p><code>Espacio</code> reproduce o pausa, <code>Ctrl F</code> busca, <code>Ctrl → / ←</code> salta entre pistas, <code>Ctrl L</code> marca favorito y <code>Esc</code> cierra el reproductor.</p></div>
+          <div class="note"><h3>Persistencia</h3><p>La cola, la canción y la posición se restauran al reabrir (RF-16). La biblioteca y los ajustes viven en <code>localStorage</code>, igual que la copia local con Drift.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="movimiento" data-od-id="motion">
+      <div class="container grid-2-1">
+        <div>
+          <p class="eyebrow" style="color:var(--muted)">Especificación de movimiento</p>
+          <h2 style="max-width:20ch">Fluido en todo, pero el ritmo solo en el reproductor.</h2>
+          <dl class="motion-spec" style="margin-top:32px">
+            <dt>Curva base</dt><dd><code>cubic-bezier(.2,.8,.2,1)</code>: entra rápido y se asienta despacio. Las vistas entran escalonadas cada 45 ms.</dd>
+            <dt>Rebote</dt><dd><code>cubic-bezier(.34,1.36,.5,1)</code>, solo en elementos táctiles: play, interruptores y avisos.</dd>
+            <dt>Hoja del reproductor</dt><dd>600 ms. La portada vuela desde el mini-reproductor hasta su lugar en la misma curva (transición compartida). Se cierra deslizando hacia abajo.</dd>
+            <dt>Aura</dt><dd>Cinco manchas con los colores reales de la portada. Los graves agrandan su radio y el golpe del bombo sube el brillo; en pausa siguen respirando, más lento.</dd>
+            <dt>Portada</dt><dd>Pulso de hasta +3 % en cada golpe; la portada del mini-reproductor, +5 %.</dd>
+            <dt>Letra</dt><dd>La línea activa crece al 100 % y se llena palabra por palabra. Las pasadas quedan al 50 % y las lejanas, desenfocadas. El desplazamiento se suaviza (lerp 0,09) y se pausa 3 s si haces scroll a mano. En los instrumentales, tres puntos laten con el bombo.</dd>
+            <dt>Reducido</dt><dd>“Animaciones: reducidas” en Ajustes, o <code>prefers-reduced-motion</code>, congela el aura y hace que la letra salte de línea en línea.</dd>
+          </dl>
+        </div>
+        <div class="stack" style="gap:16px">
+          <div class="note" data-od-id="note-fft"><h3>Para Flutter: el ritmo sin micrófono</h3><p><code>just_audio</code> no expone FFT, y el <code>Visualizer</code> de Android pide permiso de micrófono. Propuesta: que el backend calcule una vez la envolvente de energía y los beats (por ejemplo con aubio) y los entregue con la pista. El cliente solo interpola, así funciona igual en Android y PC y gasta menos batería.</p></div>
+          <div class="note" data-od-id="note-lyrics"><h3>Letra: un cambio al documento</h3><p>RF-30 hoy es <em>Could</em> y estática. <code>ytmusicapi</code> devuelve letra con tiempos cuando existe. Sugiero que <code>GET /v1/lyrics/{id}</code> responda <code>synced</code> más <code>lines[{startMs, text}]</code> y caiga a estática si no hay tiempos. El prototipo muestra ambos modos.</p></div>
+          <div class="note" data-od-id="note-demo"><h3>Qué es de muestra</h3><p>Las portadas y las listas de pistas son reales. El audio se sintetiza en el navegador para que el visualizador responda a algo real. La letra es texto de muestra, no la letra de la canción. “Onda” es un nombre provisional, porque el nombre de la app sigue abierto.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-od-id="cta">
+      <div class="container row-between" style="flex-wrap:wrap">
+        <div><h2 style="max-width:24ch">Pruébalo con audífonos.</h2><p class="lead" style="margin-top:12px">Abre el reproductor desde la barra inferior y pasa a la pestaña Letra.</p></div>
+        <a class="btn btn-secondary btn-arrow" href="app.html#/inicio">Ir al prototipo</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pagefoot" data-od-id="footer">
+    <div class="container row-between">
+      <span>Onda (nombre provisional) · plan de vistas · 5 oct 2026</span>
+      <span class="meta">Portadas © sus titulares, vía iTunes Search API, para uso de demostración · Foto de Bomba Estéreo: CAMOGRAPHY, CC BY 2.0</span>
+    </div>
+  </footer>
+  <script>
+    (function () {
+      var st = document.getElementById('stage'), f = st.querySelector('iframe');
+      function fit() { f.style.transform = 'scale(' + st.clientWidth / 1440 + ')'; }
+      fit(); addEventListener('resize', fit);
+    })();
+  </script>
+</body>
+</html>
