@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/catalog_repository.dart';
 import '../core/fakes/sample_data.dart';
+import '../models/app_settings.dart';
 import '../models/search_results.dart';
 import 'demo_providers.dart';
 import 'repository_providers.dart';
+import 'settings_providers.dart';
 
 class SearchQueryNotifier extends Notifier<String> {
   @override
@@ -58,19 +60,34 @@ final suggestionsProvider = FutureProvider<List<String>>((ref) {
   return ref.watch(catalogRepositoryProvider).suggestions(q);
 });
 
-/// Recent searches, removable one by one or all at once (RF-03).
+/// Recent searches, removable one by one or all at once (RF-03). Saved on
+/// this device; the sample catalog starts with example searches until the
+/// first real one.
 class RecentSearchesNotifier extends Notifier<List<String>> {
+  static const _key = 'ongaku.recentSearches';
+
   @override
-  List<String> build() => List.of(SampleData.initialRecentSearches);
+  List<String> build() {
+    final saved = ref.watch(sharedPreferencesProvider).getStringList(_key);
+    if (saved != null) return saved;
+    return ref.watch(musicSourceProvider) == MusicSource.sample
+        ? List.of(SampleData.initialRecentSearches)
+        : const [];
+  }
 
   void add(String q) {
     final v = q.trim().toLowerCase();
     if (v.isEmpty || youtubePlaylistId(v) != null) return;
-    state = [v, ...state.where((r) => r != v)].take(8).toList();
+    _save([v, ...state.where((r) => r != v)].take(8).toList());
   }
 
-  void removeAt(int i) => state = [...state]..removeAt(i);
-  void clear() => state = const [];
+  void removeAt(int i) => _save([...state]..removeAt(i));
+  void clear() => _save(const []);
+
+  void _save(List<String> searches) {
+    state = searches;
+    ref.read(sharedPreferencesProvider).setStringList(_key, searches);
+  }
 }
 
 final recentSearchesProvider =

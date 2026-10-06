@@ -46,6 +46,8 @@ abstract class AppSettings with _$AppSettings {
     'motion': motion.name,
     'reactiveVisuals': reactiveVisuals,
     'onboardingComplete': onboardingComplete,
+    'source': source.name,
+    'ytDlpPath': ytDlpPath,
   };
 
   static AppSettings fromPrefs(Map<String, Object?> m) {

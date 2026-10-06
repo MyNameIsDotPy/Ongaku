@@ -55,6 +55,7 @@ class FakeDownloadManager implements DownloadManager {
     required DownloadKind kind,
     required String title,
     required List<Track> tracks,
+    int? limitBytes,
   }) async {
     if (_state[collectionId]?.isDone ?? false) return;
     var entry = DownloadEntry(
@@ -87,6 +88,9 @@ class FakeDownloadManager implements DownloadManager {
     _state = {};
     _controller.add(_state);
   }
+
+  @override
+  double get usedMb => _state.values.fold(0.0, (sum, e) => sum + e.sizeMb);
 
   @override
   bool isTrackDownloaded(String videoId) => _state.values.any((e) {

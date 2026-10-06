@@ -20,6 +20,9 @@ Future<void> main() async {
 
   final prefs = await SharedPreferences.getInstance();
   final local = await LocalServices.open();
+  // Writes are debounced; don't lose the last change when the app is
+  // backgrounded or closed.
+  AppLifecycleListener(onHide: local.flush, onDetach: local.flush);
 
   // Music focus: duck for notifications, pause for calls (RF-13).
   final session = await AudioSession.instance;

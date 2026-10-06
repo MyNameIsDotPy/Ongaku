@@ -20,6 +20,7 @@ class LocalDownloadManager implements DownloadManager {
     this._dir,
     this._state,
     this._files,
+    this._sizes,
   );
 
   static Future<LocalDownloadManager> open(
@@ -39,7 +40,31 @@ class LocalDownloadManager implements DownloadManager {
     }
     // Forget files that were deleted outside the app.
     files.removeWhere((_, path) => !File(path).existsSync());
-    return LocalDownloadManager._(gateway, store, dir, entries, files);
+    _deleteLeftovers(dir, files.values.toSet());
+    // A finished album whose songs went missing can be downloaded again.
+    entries.updateAll((_, e) {
+      final present = e.trackIds.where(files.containsKey).length;
+      return e.isDone && present < e.trackIds.length
+          ? e.copyWith(completedTracks: present, status: DownloadStatus.failed)
+          : e;
+    });
+    final sizes = {
+      for (final MapEntry(:key, :value) in files.entries)
+        key: File(value).lengthSync(),
+    };
+    return LocalDownloadManager._(gateway, store, dir, entries, files, sizes);
+  }
+
+  /// Interrupted downloads (`.part`) and files no album or playlist uses.
+  static void _deleteLeftovers(Directory dir, Set<String> keep) {
+    if (!dir.existsSync()) return;
+    for (final f in dir.listSync().whereType<File>()) {
+      if (!keep.contains(f.path)) {
+        try {
+          f.deleteSync();
+        } catch (_) {}
+      }
+    }
   }
 
   final YoutubeGateway _gateway;
@@ -49,10 +74,16 @@ class LocalDownloadManager implements DownloadManager {
 
   /// videoId → file path.
   final Map<String, String> _files;
+
+  /// videoId → file size in bytes.
+  final Map<String, int> _sizes;
   final _controller = StreamController<Map<String, DownloadEntry>>.broadcast();
 
   @override
   Map<String, DownloadEntry> get current => _state;
+
+  /// Writes pending changes now (the app is going to the background).
+  Future<void> flush() => _store.flush();
 
   @override
   Stream<Map<String, DownloadEntry>> watch() => _controller.stream;
@@ -77,12 +108,18 @@ class LocalDownloadManager implements DownloadManager {
   @override
   bool isTrackDownloaded(String videoId) => _files.containsKey(videoId);
 
+  int get _usedBytes => _sizes.values.fold(0, (sum, b) => sum + b);
+
+  @override
+  double get usedMb => _usedBytes / 1048576;
+
   @override
   Future<void> download({
     required String collectionId,
     required DownloadKind kind,
     required String title,
     required List<Track> tracks,
+    int? limitBytes,
   }) async {
     if (_state[collectionId]?.isDone ?? false) return;
     var entry = DownloadEntry(
@@ -96,15 +133,25 @@ class LocalDownloadManager implements DownloadManager {
     var failed = 0;
     for (var i = 0; i < tracks.length; i++) {
       if (!_state.containsKey(collectionId)) return; // cancelled
+      final t = tracks[i];
+      if (limitBytes != null &&
+          !_files.containsKey(t.videoId) &&
+          _usedBytes >= limitBytes) {
+        _put(entry.copyWith(status: DownloadStatus.failed));
+        throw const DownloadLimitReached();
+      }
       try {
-        bytes += await _downloadTrack(tracks[i]);
+        bytes += await _downloadTrack(t);
       } on ApiException catch (e) {
+        if (!_state.containsKey(collectionId)) return;
         if (e.code == ApiErrorCode.backendOffline) {
           _put(entry.copyWith(status: DownloadStatus.failed));
           rethrow;
         }
         failed++;
       }
+      // Removed while this song was downloading: don't bring it back.
+      if (!_state.containsKey(collectionId)) return;
       entry = entry.copyWith(
         completedTracks: i + 1,
         sizeMb: double.parse((bytes / 1048576).toStringAsFixed(1)),
@@ -142,7 +189,7 @@ class LocalDownloadManager implements DownloadManager {
       }
       await tmp.rename(file.path);
       _files[t.videoId] = file.path;
-      return file.length();
+      return _sizes[t.videoId] = await file.length();
     });
   }
 
@@ -156,6 +203,7 @@ class LocalDownloadManager implements DownloadManager {
         (id) => !stillUsed.contains(id),
       )) {
         final path = _files.remove(id);
+        _sizes.remove(id);
         if (path != null) {
           await File(path).delete().catchError((_) => File(path));
         }
@@ -168,6 +216,7 @@ class LocalDownloadManager implements DownloadManager {
   Future<void> clear() async {
     _state = {};
     _files.clear();
+    _sizes.clear();
     if (await _dir.exists()) await _dir.delete(recursive: true);
     _publish();
   }

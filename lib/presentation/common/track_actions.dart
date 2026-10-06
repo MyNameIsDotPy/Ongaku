@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/routes.dart';
+import '../../core/download_manager.dart';
+import '../../models/api_error.dart';
 import '../../models/download_entry.dart';
 import '../../models/playlist.dart';
 import '../../models/track.dart';
@@ -12,6 +14,7 @@ import '../../providers/network_providers.dart';
 import '../../providers/settings_providers.dart';
 import '../../providers/library_providers.dart';
 import '../../providers/player_providers.dart';
+import '../../providers/repository_providers.dart';
 import '../../shared/design_system/design_system.dart';
 
 /// Shared behaviors behind the song row and the player menus.
@@ -262,14 +265,47 @@ extension TrackActions on WidgetRef {
       );
       return;
     }
-    await read(
-      downloadsProvider.notifier,
-    ).download(id: id, kind: kind, title: title, tracks: tracks);
+    String? problem;
+    try {
+      await read(
+        downloadsProvider.notifier,
+      ).download(id: id, kind: kind, title: title, tracks: tracks);
+    } on DownloadLimitReached {
+      final gb = read(settingsProvider).downloadLimitGb;
+      problem =
+          'Llegaste al límite de $gb GB. Libera espacio o súbelo en Ajustes';
+    } on ApiException catch (e) {
+      problem = e.code == ApiErrorCode.backendOffline
+          ? 'Se perdió la conexión durante la descarga'
+          : e.message ?? e.code.description;
+    }
     if (!context.mounted) return;
-    showOngakuToast(
-      context,
-      '${plural(tracks.length, 'canción descargada', 'canciones descargadas')} · disponible sin conexión',
-    );
+    final manager = read(downloadManagerProvider);
+    final done = tracks.where((t) => manager.isTrackDownloaded(t.videoId));
+    final n = done.length;
+    if (problem != null) {
+      showOngakuToast(
+        context,
+        n == 0 ? problem : '$problem · $n de ${tracks.length} guardadas',
+        error: true,
+      );
+    } else if (n == 0) {
+      showOngakuToast(
+        context,
+        'No se pudo descargar ninguna canción',
+        error: true,
+      );
+    } else if (n < tracks.length) {
+      showOngakuToast(
+        context,
+        '$n de ${tracks.length} canciones descargadas · las demás no están disponibles',
+      );
+    } else {
+      showOngakuToast(
+        context,
+        '${plural(n, 'canción descargada', 'canciones descargadas')} · disponible sin conexión',
+      );
+    }
   }
 }
 

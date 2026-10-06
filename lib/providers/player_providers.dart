@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/catalog_repository.dart';
 import '../core/local/local_catalog_repository.dart';
+import '../core/player/play_counter.dart';
 import '../core/player_controller.dart';
 import '../models/app_settings.dart';
 import '../models/player_snapshot.dart';
@@ -13,19 +14,22 @@ import 'player_persistence.dart';
 import 'repository_providers.dart';
 
 /// Mirrors `PlayerController` snapshots and exposes its commands. Records a
-/// play in the history once a track starts playing (RF-21).
+/// play in the history after 30 s of listening (RF-21).
 class PlayerNotifier extends Notifier<PlayerSnapshot> {
   @override
   PlayerSnapshot build() {
     final controller = ref.watch(playerControllerProvider);
     final local = ref.watch(musicSourceProvider) == MusicSource.youtube;
+    final counter = PlayCounter();
+    void count(PlayerSnapshot s) {
+      final played = counter.update(s.current, playing: s.isPlaying);
+      if (played != null) ref.read(libraryProvider.notifier).recordPlay(played);
+    }
+
     final sub = controller.snapshots.listen((s) {
       final previous = state;
       state = s;
-      if (s.isPlaying &&
-          (!previous.isPlaying || previous.current != s.current)) {
-        ref.read(libraryProvider.notifier).recordPlay(s.current!);
-      }
+      count(s);
       if (local) {
         final catalog = ref.read(catalogRepositoryProvider);
         if (catalog is LocalCatalogRepository && s.current != null) {
@@ -36,6 +40,10 @@ class PlayerNotifier extends Notifier<PlayerSnapshot> {
         }
       }
     });
+    final ticker = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => count(state),
+    );
     // Keep the saved position fresh while playing (RF-16).
     final timer = local
         ? Timer.periodic(const Duration(seconds: 5), (_) {
@@ -44,6 +52,7 @@ class PlayerNotifier extends Notifier<PlayerSnapshot> {
         : null;
     ref.onDispose(() {
       sub.cancel();
+      ticker.cancel();
       timer?.cancel();
     });
     return controller.snapshot;

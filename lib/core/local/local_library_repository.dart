@@ -30,6 +30,9 @@ class LocalLibraryRepository implements LibraryRepository {
   @override
   LibrarySnapshot get current => _state;
 
+  /// Writes pending changes now (the app is going to the background).
+  Future<void> flush() => _store.flush();
+
   @override
   Stream<LibrarySnapshot> watch() => _controller.stream;
 

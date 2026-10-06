@@ -24,6 +24,12 @@ class LocalServices {
   final BeatAnalysis beats;
   final Directory root;
 
+  /// Saves pending library and download changes right away.
+  Future<void> flush() async {
+    await library.flush();
+    await downloads.flush();
+  }
+
   static Future<LocalServices> open() async {
     final root = Directory(
       '${(await getApplicationSupportDirectory()).path}/ongaku',
