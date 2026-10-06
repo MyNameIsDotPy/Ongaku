@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 mixin _$AppSettings {
 
  String get backendUrl; String get token; AudioQuality get wifiQuality; AudioQuality get mobileQuality; bool get downloadOnWifiOnly; int get downloadLimitGb; ThemePreference get theme; MotionLevel get motion;/// Cover and aura react to the beat.
- bool get reactiveVisuals; bool get onboardingComplete;
+ bool get reactiveVisuals; bool get onboardingComplete; MusicSource get source;/// Optional yt-dlp executable (PC fallback); empty = look in PATH.
+ String get ytDlpPath;
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -26,16 +27,16 @@ $AppSettingsCopyWith<AppSettings> get copyWith => _$AppSettingsCopyWithImpl<AppS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppSettings&&(identical(other.backendUrl, backendUrl) || other.backendUrl == backendUrl)&&(identical(other.token, token) || other.token == token)&&(identical(other.wifiQuality, wifiQuality) || other.wifiQuality == wifiQuality)&&(identical(other.mobileQuality, mobileQuality) || other.mobileQuality == mobileQuality)&&(identical(other.downloadOnWifiOnly, downloadOnWifiOnly) || other.downloadOnWifiOnly == downloadOnWifiOnly)&&(identical(other.downloadLimitGb, downloadLimitGb) || other.downloadLimitGb == downloadLimitGb)&&(identical(other.theme, theme) || other.theme == theme)&&(identical(other.motion, motion) || other.motion == motion)&&(identical(other.reactiveVisuals, reactiveVisuals) || other.reactiveVisuals == reactiveVisuals)&&(identical(other.onboardingComplete, onboardingComplete) || other.onboardingComplete == onboardingComplete));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppSettings&&(identical(other.backendUrl, backendUrl) || other.backendUrl == backendUrl)&&(identical(other.token, token) || other.token == token)&&(identical(other.wifiQuality, wifiQuality) || other.wifiQuality == wifiQuality)&&(identical(other.mobileQuality, mobileQuality) || other.mobileQuality == mobileQuality)&&(identical(other.downloadOnWifiOnly, downloadOnWifiOnly) || other.downloadOnWifiOnly == downloadOnWifiOnly)&&(identical(other.downloadLimitGb, downloadLimitGb) || other.downloadLimitGb == downloadLimitGb)&&(identical(other.theme, theme) || other.theme == theme)&&(identical(other.motion, motion) || other.motion == motion)&&(identical(other.reactiveVisuals, reactiveVisuals) || other.reactiveVisuals == reactiveVisuals)&&(identical(other.onboardingComplete, onboardingComplete) || other.onboardingComplete == onboardingComplete)&&(identical(other.source, source) || other.source == source)&&(identical(other.ytDlpPath, ytDlpPath) || other.ytDlpPath == ytDlpPath));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,backendUrl,token,wifiQuality,mobileQuality,downloadOnWifiOnly,downloadLimitGb,theme,motion,reactiveVisuals,onboardingComplete);
+int get hashCode => Object.hash(runtimeType,backendUrl,token,wifiQuality,mobileQuality,downloadOnWifiOnly,downloadLimitGb,theme,motion,reactiveVisuals,onboardingComplete,source,ytDlpPath);
 
 @override
 String toString() {
-  return 'AppSettings(backendUrl: $backendUrl, token: $token, wifiQuality: $wifiQuality, mobileQuality: $mobileQuality, downloadOnWifiOnly: $downloadOnWifiOnly, downloadLimitGb: $downloadLimitGb, theme: $theme, motion: $motion, reactiveVisuals: $reactiveVisuals, onboardingComplete: $onboardingComplete)';
+  return 'AppSettings(backendUrl: $backendUrl, token: $token, wifiQuality: $wifiQuality, mobileQuality: $mobileQuality, downloadOnWifiOnly: $downloadOnWifiOnly, downloadLimitGb: $downloadLimitGb, theme: $theme, motion: $motion, reactiveVisuals: $reactiveVisuals, onboardingComplete: $onboardingComplete, source: $source, ytDlpPath: $ytDlpPath)';
 }
 
 
@@ -46,7 +47,7 @@ abstract mixin class $AppSettingsCopyWith<$Res>  {
   factory $AppSettingsCopyWith(AppSettings value, $Res Function(AppSettings) _then) = _$AppSettingsCopyWithImpl;
 @useResult
 $Res call({
- String backendUrl, String token, AudioQuality wifiQuality, AudioQuality mobileQuality, bool downloadOnWifiOnly, int downloadLimitGb, ThemePreference theme, MotionLevel motion, bool reactiveVisuals, bool onboardingComplete
+ String backendUrl, String token, AudioQuality wifiQuality, AudioQuality mobileQuality, bool downloadOnWifiOnly, int downloadLimitGb, ThemePreference theme, MotionLevel motion, bool reactiveVisuals, bool onboardingComplete, MusicSource source, String ytDlpPath
 });
 
 
@@ -63,7 +64,7 @@ class _$AppSettingsCopyWithImpl<$Res>
 
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? backendUrl = null,Object? token = null,Object? wifiQuality = null,Object? mobileQuality = null,Object? downloadOnWifiOnly = null,Object? downloadLimitGb = null,Object? theme = null,Object? motion = null,Object? reactiveVisuals = null,Object? onboardingComplete = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? backendUrl = null,Object? token = null,Object? wifiQuality = null,Object? mobileQuality = null,Object? downloadOnWifiOnly = null,Object? downloadLimitGb = null,Object? theme = null,Object? motion = null,Object? reactiveVisuals = null,Object? onboardingComplete = null,Object? source = null,Object? ytDlpPath = null,}) {
   return _then(_self.copyWith(
 backendUrl: null == backendUrl ? _self.backendUrl : backendUrl // ignore: cast_nullable_to_non_nullable
 as String,token: null == token ? _self.token : token // ignore: cast_nullable_to_non_nullable
@@ -75,7 +76,9 @@ as int,theme: null == theme ? _self.theme : theme // ignore: cast_nullable_to_no
 as ThemePreference,motion: null == motion ? _self.motion : motion // ignore: cast_nullable_to_non_nullable
 as MotionLevel,reactiveVisuals: null == reactiveVisuals ? _self.reactiveVisuals : reactiveVisuals // ignore: cast_nullable_to_non_nullable
 as bool,onboardingComplete: null == onboardingComplete ? _self.onboardingComplete : onboardingComplete // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
+as MusicSource,ytDlpPath: null == ytDlpPath ? _self.ytDlpPath : ytDlpPath // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -160,10 +163,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String backendUrl,  String token,  AudioQuality wifiQuality,  AudioQuality mobileQuality,  bool downloadOnWifiOnly,  int downloadLimitGb,  ThemePreference theme,  MotionLevel motion,  bool reactiveVisuals,  bool onboardingComplete)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String backendUrl,  String token,  AudioQuality wifiQuality,  AudioQuality mobileQuality,  bool downloadOnWifiOnly,  int downloadLimitGb,  ThemePreference theme,  MotionLevel motion,  bool reactiveVisuals,  bool onboardingComplete,  MusicSource source,  String ytDlpPath)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AppSettings() when $default != null:
-return $default(_that.backendUrl,_that.token,_that.wifiQuality,_that.mobileQuality,_that.downloadOnWifiOnly,_that.downloadLimitGb,_that.theme,_that.motion,_that.reactiveVisuals,_that.onboardingComplete);case _:
+return $default(_that.backendUrl,_that.token,_that.wifiQuality,_that.mobileQuality,_that.downloadOnWifiOnly,_that.downloadLimitGb,_that.theme,_that.motion,_that.reactiveVisuals,_that.onboardingComplete,_that.source,_that.ytDlpPath);case _:
   return orElse();
 
 }
@@ -181,10 +184,10 @@ return $default(_that.backendUrl,_that.token,_that.wifiQuality,_that.mobileQuali
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String backendUrl,  String token,  AudioQuality wifiQuality,  AudioQuality mobileQuality,  bool downloadOnWifiOnly,  int downloadLimitGb,  ThemePreference theme,  MotionLevel motion,  bool reactiveVisuals,  bool onboardingComplete)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String backendUrl,  String token,  AudioQuality wifiQuality,  AudioQuality mobileQuality,  bool downloadOnWifiOnly,  int downloadLimitGb,  ThemePreference theme,  MotionLevel motion,  bool reactiveVisuals,  bool onboardingComplete,  MusicSource source,  String ytDlpPath)  $default,) {final _that = this;
 switch (_that) {
 case _AppSettings():
-return $default(_that.backendUrl,_that.token,_that.wifiQuality,_that.mobileQuality,_that.downloadOnWifiOnly,_that.downloadLimitGb,_that.theme,_that.motion,_that.reactiveVisuals,_that.onboardingComplete);case _:
+return $default(_that.backendUrl,_that.token,_that.wifiQuality,_that.mobileQuality,_that.downloadOnWifiOnly,_that.downloadLimitGb,_that.theme,_that.motion,_that.reactiveVisuals,_that.onboardingComplete,_that.source,_that.ytDlpPath);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +204,10 @@ return $default(_that.backendUrl,_that.token,_that.wifiQuality,_that.mobileQuali
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String backendUrl,  String token,  AudioQuality wifiQuality,  AudioQuality mobileQuality,  bool downloadOnWifiOnly,  int downloadLimitGb,  ThemePreference theme,  MotionLevel motion,  bool reactiveVisuals,  bool onboardingComplete)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String backendUrl,  String token,  AudioQuality wifiQuality,  AudioQuality mobileQuality,  bool downloadOnWifiOnly,  int downloadLimitGb,  ThemePreference theme,  MotionLevel motion,  bool reactiveVisuals,  bool onboardingComplete,  MusicSource source,  String ytDlpPath)?  $default,) {final _that = this;
 switch (_that) {
 case _AppSettings() when $default != null:
-return $default(_that.backendUrl,_that.token,_that.wifiQuality,_that.mobileQuality,_that.downloadOnWifiOnly,_that.downloadLimitGb,_that.theme,_that.motion,_that.reactiveVisuals,_that.onboardingComplete);case _:
+return $default(_that.backendUrl,_that.token,_that.wifiQuality,_that.mobileQuality,_that.downloadOnWifiOnly,_that.downloadLimitGb,_that.theme,_that.motion,_that.reactiveVisuals,_that.onboardingComplete,_that.source,_that.ytDlpPath);case _:
   return null;
 
 }
@@ -216,7 +219,7 @@ return $default(_that.backendUrl,_that.token,_that.wifiQuality,_that.mobileQuali
 
 
 class _AppSettings extends AppSettings {
-  const _AppSettings({this.backendUrl = 'http://homelab.tail3c2e1.ts.net:8080', this.token = '', this.wifiQuality = AudioQuality.high, this.mobileQuality = AudioQuality.low, this.downloadOnWifiOnly = true, this.downloadLimitGb = 8, this.theme = ThemePreference.light, this.motion = MotionLevel.full, this.reactiveVisuals = true, this.onboardingComplete = false}): super._();
+  const _AppSettings({this.backendUrl = 'http://homelab.tail3c2e1.ts.net:8080', this.token = '', this.wifiQuality = AudioQuality.high, this.mobileQuality = AudioQuality.low, this.downloadOnWifiOnly = true, this.downloadLimitGb = 8, this.theme = ThemePreference.light, this.motion = MotionLevel.full, this.reactiveVisuals = true, this.onboardingComplete = false, this.source = MusicSource.youtube, this.ytDlpPath = ''}): super._();
   
 
 @override@JsonKey() final  String backendUrl;
@@ -230,6 +233,9 @@ class _AppSettings extends AppSettings {
 /// Cover and aura react to the beat.
 @override@JsonKey() final  bool reactiveVisuals;
 @override@JsonKey() final  bool onboardingComplete;
+@override@JsonKey() final  MusicSource source;
+/// Optional yt-dlp executable (PC fallback); empty = look in PATH.
+@override@JsonKey() final  String ytDlpPath;
 
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
@@ -241,16 +247,16 @@ _$AppSettingsCopyWith<_AppSettings> get copyWith => __$AppSettingsCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppSettings&&(identical(other.backendUrl, backendUrl) || other.backendUrl == backendUrl)&&(identical(other.token, token) || other.token == token)&&(identical(other.wifiQuality, wifiQuality) || other.wifiQuality == wifiQuality)&&(identical(other.mobileQuality, mobileQuality) || other.mobileQuality == mobileQuality)&&(identical(other.downloadOnWifiOnly, downloadOnWifiOnly) || other.downloadOnWifiOnly == downloadOnWifiOnly)&&(identical(other.downloadLimitGb, downloadLimitGb) || other.downloadLimitGb == downloadLimitGb)&&(identical(other.theme, theme) || other.theme == theme)&&(identical(other.motion, motion) || other.motion == motion)&&(identical(other.reactiveVisuals, reactiveVisuals) || other.reactiveVisuals == reactiveVisuals)&&(identical(other.onboardingComplete, onboardingComplete) || other.onboardingComplete == onboardingComplete));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppSettings&&(identical(other.backendUrl, backendUrl) || other.backendUrl == backendUrl)&&(identical(other.token, token) || other.token == token)&&(identical(other.wifiQuality, wifiQuality) || other.wifiQuality == wifiQuality)&&(identical(other.mobileQuality, mobileQuality) || other.mobileQuality == mobileQuality)&&(identical(other.downloadOnWifiOnly, downloadOnWifiOnly) || other.downloadOnWifiOnly == downloadOnWifiOnly)&&(identical(other.downloadLimitGb, downloadLimitGb) || other.downloadLimitGb == downloadLimitGb)&&(identical(other.theme, theme) || other.theme == theme)&&(identical(other.motion, motion) || other.motion == motion)&&(identical(other.reactiveVisuals, reactiveVisuals) || other.reactiveVisuals == reactiveVisuals)&&(identical(other.onboardingComplete, onboardingComplete) || other.onboardingComplete == onboardingComplete)&&(identical(other.source, source) || other.source == source)&&(identical(other.ytDlpPath, ytDlpPath) || other.ytDlpPath == ytDlpPath));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,backendUrl,token,wifiQuality,mobileQuality,downloadOnWifiOnly,downloadLimitGb,theme,motion,reactiveVisuals,onboardingComplete);
+int get hashCode => Object.hash(runtimeType,backendUrl,token,wifiQuality,mobileQuality,downloadOnWifiOnly,downloadLimitGb,theme,motion,reactiveVisuals,onboardingComplete,source,ytDlpPath);
 
 @override
 String toString() {
-  return 'AppSettings(backendUrl: $backendUrl, token: $token, wifiQuality: $wifiQuality, mobileQuality: $mobileQuality, downloadOnWifiOnly: $downloadOnWifiOnly, downloadLimitGb: $downloadLimitGb, theme: $theme, motion: $motion, reactiveVisuals: $reactiveVisuals, onboardingComplete: $onboardingComplete)';
+  return 'AppSettings(backendUrl: $backendUrl, token: $token, wifiQuality: $wifiQuality, mobileQuality: $mobileQuality, downloadOnWifiOnly: $downloadOnWifiOnly, downloadLimitGb: $downloadLimitGb, theme: $theme, motion: $motion, reactiveVisuals: $reactiveVisuals, onboardingComplete: $onboardingComplete, source: $source, ytDlpPath: $ytDlpPath)';
 }
 
 
@@ -261,7 +267,7 @@ abstract mixin class _$AppSettingsCopyWith<$Res> implements $AppSettingsCopyWith
   factory _$AppSettingsCopyWith(_AppSettings value, $Res Function(_AppSettings) _then) = __$AppSettingsCopyWithImpl;
 @override @useResult
 $Res call({
- String backendUrl, String token, AudioQuality wifiQuality, AudioQuality mobileQuality, bool downloadOnWifiOnly, int downloadLimitGb, ThemePreference theme, MotionLevel motion, bool reactiveVisuals, bool onboardingComplete
+ String backendUrl, String token, AudioQuality wifiQuality, AudioQuality mobileQuality, bool downloadOnWifiOnly, int downloadLimitGb, ThemePreference theme, MotionLevel motion, bool reactiveVisuals, bool onboardingComplete, MusicSource source, String ytDlpPath
 });
 
 
@@ -278,7 +284,7 @@ class __$AppSettingsCopyWithImpl<$Res>
 
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? backendUrl = null,Object? token = null,Object? wifiQuality = null,Object? mobileQuality = null,Object? downloadOnWifiOnly = null,Object? downloadLimitGb = null,Object? theme = null,Object? motion = null,Object? reactiveVisuals = null,Object? onboardingComplete = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? backendUrl = null,Object? token = null,Object? wifiQuality = null,Object? mobileQuality = null,Object? downloadOnWifiOnly = null,Object? downloadLimitGb = null,Object? theme = null,Object? motion = null,Object? reactiveVisuals = null,Object? onboardingComplete = null,Object? source = null,Object? ytDlpPath = null,}) {
   return _then(_AppSettings(
 backendUrl: null == backendUrl ? _self.backendUrl : backendUrl // ignore: cast_nullable_to_non_nullable
 as String,token: null == token ? _self.token : token // ignore: cast_nullable_to_non_nullable
@@ -290,7 +296,9 @@ as int,theme: null == theme ? _self.theme : theme // ignore: cast_nullable_to_no
 as ThemePreference,motion: null == motion ? _self.motion : motion // ignore: cast_nullable_to_non_nullable
 as MotionLevel,reactiveVisuals: null == reactiveVisuals ? _self.reactiveVisuals : reactiveVisuals // ignore: cast_nullable_to_non_nullable
 as bool,onboardingComplete: null == onboardingComplete ? _self.onboardingComplete : onboardingComplete // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
+as MusicSource,ytDlpPath: null == ytDlpPath ? _self.ytDlpPath : ytDlpPath // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

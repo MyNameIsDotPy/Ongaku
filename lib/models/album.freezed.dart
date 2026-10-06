@@ -14,7 +14,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Album {
 
- String get id; String get title; ArtistRef get artist; int get year; String get genre; String get coverUrl; List<int> get palette; List<Track> get tracks;
+ String get id; String get title; ArtistRef get artist;/// Unknown for some YouTube albums.
+ int? get year; String get genre; String get coverUrl; List<int> get palette; List<Track> get tracks;
 /// Create a copy of Album
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -45,7 +46,7 @@ abstract mixin class $AlbumCopyWith<$Res>  {
   factory $AlbumCopyWith(Album value, $Res Function(Album) _then) = _$AlbumCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, ArtistRef artist, int year, String genre, String coverUrl, List<int> palette, List<Track> tracks
+ String id, String title, ArtistRef artist, int? year, String genre, String coverUrl, List<int> palette, List<Track> tracks
 });
 
 
@@ -62,13 +63,13 @@ class _$AlbumCopyWithImpl<$Res>
 
 /// Create a copy of Album
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? artist = null,Object? year = null,Object? genre = null,Object? coverUrl = null,Object? palette = null,Object? tracks = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? artist = null,Object? year = freezed,Object? genre = null,Object? coverUrl = null,Object? palette = null,Object? tracks = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,artist: null == artist ? _self.artist : artist // ignore: cast_nullable_to_non_nullable
-as ArtistRef,year: null == year ? _self.year : year // ignore: cast_nullable_to_non_nullable
-as int,genre: null == genre ? _self.genre : genre // ignore: cast_nullable_to_non_nullable
+as ArtistRef,year: freezed == year ? _self.year : year // ignore: cast_nullable_to_non_nullable
+as int?,genre: null == genre ? _self.genre : genre // ignore: cast_nullable_to_non_nullable
 as String,coverUrl: null == coverUrl ? _self.coverUrl : coverUrl // ignore: cast_nullable_to_non_nullable
 as String,palette: null == palette ? _self.palette : palette // ignore: cast_nullable_to_non_nullable
 as List<int>,tracks: null == tracks ? _self.tracks : tracks // ignore: cast_nullable_to_non_nullable
@@ -166,7 +167,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  ArtistRef artist,  int year,  String genre,  String coverUrl,  List<int> palette,  List<Track> tracks)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  ArtistRef artist,  int? year,  String genre,  String coverUrl,  List<int> palette,  List<Track> tracks)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Album() when $default != null:
 return $default(_that.id,_that.title,_that.artist,_that.year,_that.genre,_that.coverUrl,_that.palette,_that.tracks);case _:
@@ -187,7 +188,7 @@ return $default(_that.id,_that.title,_that.artist,_that.year,_that.genre,_that.c
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  ArtistRef artist,  int year,  String genre,  String coverUrl,  List<int> palette,  List<Track> tracks)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  ArtistRef artist,  int? year,  String genre,  String coverUrl,  List<int> palette,  List<Track> tracks)  $default,) {final _that = this;
 switch (_that) {
 case _Album():
 return $default(_that.id,_that.title,_that.artist,_that.year,_that.genre,_that.coverUrl,_that.palette,_that.tracks);case _:
@@ -207,7 +208,7 @@ return $default(_that.id,_that.title,_that.artist,_that.year,_that.genre,_that.c
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  ArtistRef artist,  int year,  String genre,  String coverUrl,  List<int> palette,  List<Track> tracks)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  ArtistRef artist,  int? year,  String genre,  String coverUrl,  List<int> palette,  List<Track> tracks)?  $default,) {final _that = this;
 switch (_that) {
 case _Album() when $default != null:
 return $default(_that.id,_that.title,_that.artist,_that.year,_that.genre,_that.coverUrl,_that.palette,_that.tracks);case _:
@@ -222,13 +223,14 @@ return $default(_that.id,_that.title,_that.artist,_that.year,_that.genre,_that.c
 
 
 class _Album extends Album {
-  const _Album({required this.id, required this.title, required this.artist, required this.year, required this.genre, required this.coverUrl, final  List<int> palette = const <int>[], final  List<Track> tracks = const <Track>[]}): _palette = palette,_tracks = tracks,super._();
+  const _Album({required this.id, required this.title, required this.artist, this.year, required this.genre, required this.coverUrl, final  List<int> palette = const <int>[], final  List<Track> tracks = const <Track>[]}): _palette = palette,_tracks = tracks,super._();
   
 
 @override final  String id;
 @override final  String title;
 @override final  ArtistRef artist;
-@override final  int year;
+/// Unknown for some YouTube albums.
+@override final  int? year;
 @override final  String genre;
 @override final  String coverUrl;
  final  List<int> _palette;
@@ -276,7 +278,7 @@ abstract mixin class _$AlbumCopyWith<$Res> implements $AlbumCopyWith<$Res> {
   factory _$AlbumCopyWith(_Album value, $Res Function(_Album) _then) = __$AlbumCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, ArtistRef artist, int year, String genre, String coverUrl, List<int> palette, List<Track> tracks
+ String id, String title, ArtistRef artist, int? year, String genre, String coverUrl, List<int> palette, List<Track> tracks
 });
 
 
@@ -293,13 +295,13 @@ class __$AlbumCopyWithImpl<$Res>
 
 /// Create a copy of Album
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? artist = null,Object? year = null,Object? genre = null,Object? coverUrl = null,Object? palette = null,Object? tracks = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? artist = null,Object? year = freezed,Object? genre = null,Object? coverUrl = null,Object? palette = null,Object? tracks = null,}) {
   return _then(_Album(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,artist: null == artist ? _self.artist : artist // ignore: cast_nullable_to_non_nullable
-as ArtistRef,year: null == year ? _self.year : year // ignore: cast_nullable_to_non_nullable
-as int,genre: null == genre ? _self.genre : genre // ignore: cast_nullable_to_non_nullable
+as ArtistRef,year: freezed == year ? _self.year : year // ignore: cast_nullable_to_non_nullable
+as int?,genre: null == genre ? _self.genre : genre // ignore: cast_nullable_to_non_nullable
 as String,coverUrl: null == coverUrl ? _self.coverUrl : coverUrl // ignore: cast_nullable_to_non_nullable
 as String,palette: null == palette ? _self._palette : palette // ignore: cast_nullable_to_non_nullable
 as List<int>,tracks: null == tracks ? _self._tracks : tracks // ignore: cast_nullable_to_non_nullable

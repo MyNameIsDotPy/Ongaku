@@ -36,7 +36,10 @@ class AlbumCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => MediaCard(
     covers: [album.coverUrl],
     title: album.title,
-    subtitle: '${album.year} · ${album.artist.name}',
+    subtitle: [
+      if (album.year != null) '${album.year}',
+      if (album.artist.name.isNotEmpty) album.artist.name,
+    ].join(' · '),
     placeholder: OngakuIcons.album,
     heroTag: hero ? 'cover-${album.id}' : null,
     onTap: () => context.go(Routes.album(album.id)),
@@ -55,7 +58,7 @@ class PlaylistCard extends ConsumerWidget {
     covers: playlist.covers,
     title: playlist.name,
     subtitle:
-        '${plural(playlist.tracks.length, 'canción', 'canciones')}'
+        '${plural(playlist.size, 'canción', 'canciones')}'
         '${playlist.isOwn ? '' : ' · YouTube'}',
     heroTag: 'cover-${playlist.id}',
     onTap: () => context.go(Routes.playlist(playlist.id)),
@@ -74,7 +77,11 @@ class ArtistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MediaCard(
-    covers: [?(artist.photoUrl ?? artist.albums.firstOrNull?.coverUrl)],
+    covers: [
+      ?(artist.avatarUrl ??
+          artist.photoUrl ??
+          artist.albums.firstOrNull?.coverUrl),
+    ],
     title: artist.name,
     subtitle: 'Artista',
     circle: true,

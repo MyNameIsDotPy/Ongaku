@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/routes.dart';
+import '../../models/playlist.dart';
 import '../../models/search_results.dart';
 import '../../providers/catalog_providers.dart';
 import '../../providers/demo_providers.dart';
-import '../../providers/library_providers.dart';
 import '../../providers/player_providers.dart';
 import '../../providers/search_providers.dart';
 import '../../providers/ui_providers.dart';
@@ -285,26 +285,28 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ],
         ),
       ),
-      PageSection(
-        index: 3,
-        top: OngakuSpacing.block,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SectionHeader('Explorar tu catálogo'),
-            switch (explore) {
-              AsyncData(:final value) => CardGrid(
-                children: [for (final a in value) AlbumCard(album: a)],
-              ),
-              AsyncError(:final error) => ApiErrorView(
-                error: error,
-                onRetry: () => retry(ref, [exploreProvider]),
-              ),
-              _ => const RowSkeleton(),
-            },
-          ],
+      // Nothing to browse without a catalog (YouTube mode): hide it.
+      if (explore.value?.isNotEmpty ?? true)
+        PageSection(
+          index: 3,
+          top: OngakuSpacing.block,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SectionHeader('Explorar tu catálogo'),
+              switch (explore) {
+                AsyncData(:final value) => CardGrid(
+                  children: [for (final a in value) AlbumCard(album: a)],
+                ),
+                AsyncError(:final error) => ApiErrorView(
+                  error: error,
+                  onRetry: () => retry(ref, [exploreProvider]),
+                ),
+                _ => const RowSkeleton(),
+              },
+            ],
+          ),
         ),
-      ),
     ];
   }
 }
@@ -400,8 +402,19 @@ class _YoutubeLinkCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
-    final p = ref.watch(playlistProvider('pl-yt-cumbia'));
-    if (p == null) return const SizedBox.shrink();
+    final id = ref.watch(pastedPlaylistIdProvider)!;
+    final Playlist p;
+    switch (ref.watch(remotePlaylistProvider(id))) {
+      case AsyncData(:final value):
+        p = value;
+      case AsyncError(:final error):
+        return ApiErrorView(
+          error: error,
+          onRetry: () => retry(ref, [remotePlaylistProvider(id)]),
+        );
+      default:
+        return const RowSkeleton();
+    }
     return CustomPaint(
       painter: _DashPainter(Color.lerp(c.border, c.fg, 0.35)!),
       child: Padding(
@@ -552,7 +565,11 @@ class _ResultsBody extends ConsumerWidget {
         chips,
         ...switch (filter) {
           SearchFilter.all => [
-            PageSection(top: 20, child: _TopAndSongs(results: r)),
+            // Only playlists matched: skip the top-result block.
+            if (r.artists.isNotEmpty ||
+                r.albums.isNotEmpty ||
+                r.tracks.isNotEmpty)
+              PageSection(top: 20, child: _TopAndSongs(results: r)),
             if (r.albums.isNotEmpty)
               PageSection(
                 top: OngakuSpacing.block,
@@ -625,10 +642,18 @@ class _TopAndSongs extends ConsumerWidget {
       (kind, title, cover, route) = (
         'Artista',
         a.name,
-        a.albums.first.coverUrl,
+        a.avatarUrl ?? a.albums.firstOrNull?.coverUrl ?? '',
         Routes.artist(a.id),
       );
-      play = () => ref.startRadio(context, a.popular.first);
+      // Search results carry no songs: load the artist, then start radio.
+      play = () async {
+        final full = a.popular.isNotEmpty
+            ? a
+            : await ref.read(artistProvider(a.id).future);
+        if (full.popular.isNotEmpty && context.mounted) {
+          await ref.startRadio(context, full.popular.first);
+        }
+      };
     } else if (r.albums.isNotEmpty) {
       final a = r.albums.first;
       (kind, title, cover, route) = (
@@ -637,14 +662,18 @@ class _TopAndSongs extends ConsumerWidget {
         a.coverUrl,
         Routes.album(a.id),
       );
-      play = () => player.play(a.tracks, from: a.title);
+      play = () => a.tracks.isNotEmpty
+          ? player.play(a.tracks, from: a.title)
+          : playAlbumById(context, ref, a.id);
     } else {
       final t = r.tracks.first;
       (kind, title, cover, route) = (
         'Canción',
         t.title,
         t.coverUrl,
-        Routes.album(t.album!.id),
+        t.album != null
+            ? Routes.album(t.album!.id)
+            : Routes.artist(t.primaryArtist.id),
       );
       play = () => player.play([t], from: 'Búsqueda');
     }

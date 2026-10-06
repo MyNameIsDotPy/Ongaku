@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/app_settings.dart';
 import '../models/demo_scenario.dart';
+import 'network_providers.dart';
 import 'repository_providers.dart';
 
 /// Which backend condition the fakes simulate (Ajustes → Simulación).
@@ -19,7 +21,11 @@ final demoScenarioProvider =
       DemoScenarioNotifier.new,
     );
 
-/// False when the backend does not answer (RF-29).
-final backendOnlineProvider = Provider<bool>(
-  (ref) => ref.watch(demoScenarioProvider) != DemoScenario.offline,
-);
+/// False when music cannot be fetched (RF-29): no network, YouTube not
+/// answering, or the simulated "sin backend" state for sample data.
+final backendOnlineProvider = Provider<bool>((ref) {
+  if (ref.watch(musicSourceProvider) == MusicSource.sample) {
+    return ref.watch(demoScenarioProvider) != DemoScenario.offline;
+  }
+  return ref.watch(youtubeReachableProvider) && !ref.watch(offlineByOsProvider);
+});

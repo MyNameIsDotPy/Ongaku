@@ -8,6 +8,7 @@ import '../../models/download_entry.dart';
 import '../../providers/catalog_providers.dart';
 import '../../providers/player_providers.dart';
 import '../../shared/design_system/design_system.dart';
+import '../common/cover_palette.dart';
 import '../common/async_states.dart';
 import '../common/download_button.dart';
 import '../common/media_cards.dart';
@@ -51,7 +52,9 @@ class _AlbumBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final a = album;
     final player = ref.read(playerProvider.notifier);
-    final glow = a.palette.isEmpty ? null : Color(a.palette.first);
+    final glow = a.palette.isNotEmpty
+        ? Color(a.palette.first)
+        : ref.watch(coverPaletteProvider(a.coverUrl)).value?.firstOrNull;
     final more =
         ref
             .watch(artistProvider(a.artist.id))
@@ -82,7 +85,7 @@ class _AlbumBody extends ConsumerWidget {
                 color: context.colors.fg,
                 onTap: () => context.go(Routes.artist(a.artist.id)),
               ),
-              HeroFact('${a.year}', mono: true),
+              if (a.year != null) HeroFact('${a.year}', mono: true),
               HeroFact(plural(a.tracks.length, 'canción', 'canciones')),
               HeroFact(formatLong(a.totalDuration), mono: true),
             ],
@@ -128,7 +131,7 @@ class _AlbumBody extends ConsumerWidget {
         PageSection(
           top: 20,
           child: Text(
-            '© ${a.year} ${a.artist.name}',
+            '© ${[if (a.year != null) a.year, a.artist.name].join(' ')}',
             style: TextStyle(fontSize: 13, color: context.colors.muted),
           ),
         ),

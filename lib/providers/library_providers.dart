@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/library_repository.dart';
+import '../models/app_settings.dart';
 import '../models/demo_scenario.dart';
 import '../models/library_snapshot.dart';
 import '../models/play_event.dart';
@@ -15,6 +16,8 @@ import 'repository_providers.dart';
 /// Status of the library sync with the backend. The library itself is always
 /// readable from the local copy; this drives skeleton / error states.
 final librarySyncProvider = FutureProvider<void>((ref) async {
+  // The on-device library is always available.
+  if (ref.watch(musicSourceProvider) == MusicSource.youtube) return;
   ref.watch(demoScenarioProvider);
   await ref.watch(fakeBackendProvider).call(() {}, cacheable: true);
 });

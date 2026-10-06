@@ -5,32 +5,48 @@ import '../../models/api_error.dart';
 import '../../models/player_snapshot.dart';
 import '../../models/track.dart';
 import '../player_controller.dart';
+import 'playback_engine.dart';
 
-/// Simulated player that follows the `PlayerController` state contract
-/// (idle → loading → playing ⇄ paused, buffering on seek, error → skip,
-/// completed at the end of the queue) with a wall clock instead of audio.
-class FakePlayerController implements PlayerController {
-  FakePlayerController({List<Track> restoredQueue = const []})
-    : _snapshot = PlayerSnapshot(
-        queue: restoredQueue,
-        sourceLabel: 'Para TransMilenio',
-      ) {
-    _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
+/// [PlayerController] with the full queue state machine (RF-08/09/12/16/17,
+/// RNF-12): idle → loading → playing ⇄ paused, buffering on seek and stalls,
+/// error → skip to the next track, completed at the end of the queue.
+class QueuePlayerController implements PlayerController {
+  QueuePlayerController(
+    this._engine, {
+    List<Track> restoredQueue = const [],
+    int restoredIndex = 0,
+    Duration resumeAt = Duration.zero,
+    String sourceLabel = 'Cola',
+    // Named parameters cannot be private initializing formals.
+    // ignore: prefer_initializing_formals
+  }) : _resumeAt = resumeAt,
+       _snapshot = PlayerSnapshot(
+         queue: restoredQueue,
+         index: restoredQueue.isEmpty
+             ? 0
+             : restoredIndex.clamp(0, restoredQueue.length - 1),
+         sourceLabel: sourceLabel,
+       ) {
+    _subs = [
+      _engine.positions.listen(_onPosition),
+      _engine.completed.listen((_) => _advance(auto: true)),
+      _engine.buffering.listen(_onBuffering),
+      _engine.errors.listen((e) => _fail(_snapshot.current, e)),
+    ];
   }
 
-  static const _loadDelay = Duration(milliseconds: 420);
-  static const _seekDelay = Duration(milliseconds: 240);
-
+  final PlaybackEngine _engine;
+  late final List<StreamSubscription<Object?>> _subs;
   PlayerSnapshot _snapshot;
   final _snapshots = StreamController<PlayerSnapshot>.broadcast();
   final _positions = StreamController<Duration>.broadcast();
-  late final Timer _ticker;
-  Timer? _pending;
-  Timer? _sleepTimer;
   List<Track>? _unshuffled;
+  Timer? _skipTimer;
+  Timer? _sleepTimer;
+  int _loadToken = 0;
 
-  final _clock = Stopwatch();
-  Duration _base = Duration.zero;
+  /// Where a restored (idle) queue resumes.
+  Duration _resumeAt;
 
   @override
   PlayerSnapshot get snapshot => _snapshot;
@@ -39,67 +55,66 @@ class FakePlayerController implements PlayerController {
   Stream<PlayerSnapshot> get snapshots => _snapshots.stream;
 
   @override
-  Duration get position {
-    final p = _base + _clock.elapsed;
-    final d = _snapshot.current?.duration ?? Duration.zero;
-    return p > d ? d : p;
-  }
+  Duration get position =>
+      _snapshot.status == PlaybackStatus.idle ? _resumeAt : _engine.position;
 
   @override
   Stream<Duration> get positions => _positions.stream;
 
   void _set(PlayerSnapshot next) {
     _snapshot = next;
-    _snapshots.add(next);
+    if (!_snapshots.isClosed) _snapshots.add(next);
   }
 
   void _setStatus(PlaybackStatus s, {ApiException? error}) =>
       _set(_snapshot.copyWith(status: s, error: error));
 
-  void _setPosition(Duration p, {bool running = false}) {
-    _base = p;
-    _clock
-      ..reset()
-      ..stop();
-    if (running) _clock.start();
-    _positions.add(p);
+  void _onPosition(Duration p) {
+    if (!_positions.isClosed) _positions.add(p);
+    final cur = _snapshot.current;
+    if (cur != null &&
+        _snapshot.isPlaying &&
+        _snapshot.sleep is SleepAtEndOfTrack &&
+        p >= cur.duration - const Duration(milliseconds: 300)) {
+      _engine.pause();
+      _set(_snapshot.copyWith(status: PlaybackStatus.paused, sleep: null));
+    }
   }
 
-  void _load([Duration from = Duration.zero]) {
+  void _onBuffering(bool stalled) {
+    if (stalled && _snapshot.isPlaying) _setStatus(PlaybackStatus.buffering);
+    if (!stalled && _snapshot.status == PlaybackStatus.buffering) {
+      _setStatus(PlaybackStatus.playing);
+    }
+  }
+
+  Future<void> _load([Duration from = Duration.zero]) async {
     final track = _snapshot.current;
     if (track == null) return;
-    _pending?.cancel();
-    _setPosition(from);
+    final token = ++_loadToken;
+    _skipTimer?.cancel();
     _setStatus(PlaybackStatus.loading);
-    _pending = Timer(_loadDelay, () {
-      if (track.unavailable) {
-        _setStatus(
-          PlaybackStatus.error,
-          error: ApiException(
-            ApiErrorCode.unavailable,
-            '“${track.title}” no está disponible. Saltando a la siguiente.',
-          ),
-        );
-        _pending = Timer(const Duration(milliseconds: 1600), next);
-        return;
-      }
-      _setPosition(from, running: true);
+    if (!_positions.isClosed) _positions.add(from);
+    try {
+      await _engine.load(track, from: from);
+      if (token != _loadToken) return;
       _setStatus(PlaybackStatus.playing);
-    });
+      await _engine.play();
+    } catch (e) {
+      if (token == _loadToken) _fail(track, e);
+    }
   }
 
-  void _tick() {
-    if (_snapshot.status != PlaybackStatus.playing) return;
-    final pos = position;
-    _positions.add(pos);
-    final d = _snapshot.current!.duration;
-    if (_snapshot.sleep is SleepAtEndOfTrack &&
-        pos >= d - const Duration(milliseconds: 300)) {
-      _setPosition(Duration.zero);
-      _set(_snapshot.copyWith(status: PlaybackStatus.paused, sleep: null));
-      return;
-    }
-    if (pos >= d) _advance(auto: true);
+  /// RNF-12: warn and jump to the next song without stopping the queue.
+  void _fail(Track? track, Object e) {
+    final api = e is ApiException
+        ? e
+        : ApiException(ApiErrorCode.extractionFailed, '$e');
+    final message =
+        '“${track?.title ?? 'La canción'}” no está disponible. '
+        'Saltando a la siguiente.';
+    _setStatus(PlaybackStatus.error, error: ApiException(api.code, message));
+    _skipTimer = Timer(const Duration(milliseconds: 1600), next);
   }
 
   @override
@@ -122,20 +137,18 @@ class FakePlayerController implements PlayerController {
   void toggle() {
     if (_snapshot.current == null) return;
     switch (_snapshot.status) {
-      case PlaybackStatus.playing:
-        _setPosition(position);
+      case PlaybackStatus.playing || PlaybackStatus.buffering:
+        _engine.pause();
         _setStatus(PlaybackStatus.paused);
       case PlaybackStatus.paused:
-        _setPosition(_base, running: true);
         _setStatus(PlaybackStatus.playing);
+        _engine.play();
       case PlaybackStatus.idle:
-        _load(_base);
+        _load(_resumeAt);
       case PlaybackStatus.completed:
         _set(_snapshot.copyWith(index: 0));
         _load();
-      case PlaybackStatus.loading ||
-          PlaybackStatus.buffering ||
-          PlaybackStatus.error:
+      case PlaybackStatus.loading || PlaybackStatus.error:
         break;
     }
   }
@@ -146,16 +159,18 @@ class FakePlayerController implements PlayerController {
     final target = Duration(
       milliseconds: to.inMilliseconds.clamp(0, max(0, d.inMilliseconds - 500)),
     );
-    if (_snapshot.status != PlaybackStatus.playing) {
-      _setPosition(target);
+    if (_snapshot.status == PlaybackStatus.idle) {
+      _resumeAt = target;
+      if (!_positions.isClosed) _positions.add(target);
       return;
     }
-    _setPosition(target);
-    _setStatus(PlaybackStatus.buffering);
-    _pending?.cancel();
-    _pending = Timer(_seekDelay, () {
-      _setPosition(target, running: true);
-      _setStatus(PlaybackStatus.playing);
+    final wasPlaying = _snapshot.isPlaying;
+    if (wasPlaying) _setStatus(PlaybackStatus.buffering);
+    _engine.seek(target).then((_) {
+      if (!_positions.isClosed) _positions.add(target);
+      if (wasPlaying && _snapshot.status == PlaybackStatus.buffering) {
+        _setStatus(PlaybackStatus.playing);
+      }
     });
   }
 
@@ -163,7 +178,10 @@ class FakePlayerController implements PlayerController {
   void next() => _advance();
 
   void _advance({bool auto = false}) {
-    if (auto && _snapshot.repeat == QueueRepeat.one) return _load();
+    if (auto && _snapshot.repeat == QueueRepeat.one) {
+      _load();
+      return;
+    }
     final s = _snapshot;
     final upNext = max(0, s.upNext - 1);
     if (s.index < s.queue.length - 1) {
@@ -173,8 +191,10 @@ class FakePlayerController implements PlayerController {
       _set(s.copyWith(index: 0, upNext: upNext));
       _load();
     } else {
-      _pending?.cancel();
-      _setPosition(Duration.zero);
+      _loadToken++;
+      _skipTimer?.cancel();
+      _engine.stop();
+      if (!_positions.isClosed) _positions.add(Duration.zero);
       _set(s.copyWith(status: PlaybackStatus.completed, upNext: 0));
     }
   }
@@ -271,8 +291,7 @@ class FakePlayerController implements PlayerController {
   void move(int from, int to) {
     final s = _snapshot;
     final q = List.of(s.queue);
-    final t = q.removeAt(from);
-    q.insert(to, t);
+    q.insert(to, q.removeAt(from));
     var index = s.index;
     if (from == s.index) {
       index = to;
@@ -306,9 +325,12 @@ class FakePlayerController implements PlayerController {
 
   @override
   void dispose() {
-    _ticker.cancel();
-    _pending?.cancel();
+    _skipTimer?.cancel();
     _sleepTimer?.cancel();
+    for (final s in _subs) {
+      s.cancel();
+    }
+    _engine.dispose();
     _snapshots.close();
     _positions.close();
   }

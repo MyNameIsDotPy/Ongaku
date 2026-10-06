@@ -4,6 +4,10 @@ part 'app_settings.freezed.dart';
 
 enum AudioQuality { high, low }
 
+/// Where music comes from: extracted from YouTube on this device, or the
+/// built-in sample catalog (demo and tests).
+enum MusicSource { youtube, sample }
+
 enum ThemePreference { light, dark, system }
 
 enum MotionLevel { full, reduced }
@@ -25,6 +29,10 @@ abstract class AppSettings with _$AppSettings {
     /// Cover and aura react to the beat.
     @Default(true) bool reactiveVisuals,
     @Default(false) bool onboardingComplete,
+    @Default(MusicSource.youtube) MusicSource source,
+
+    /// Optional yt-dlp executable (PC fallback); empty = look in PATH.
+    @Default('') String ytDlpPath,
   }) = _AppSettings;
 
   Map<String, Object> toPrefs() => {
@@ -61,6 +69,8 @@ abstract class AppSettings with _$AppSettings {
       reactiveVisuals: m['reactiveVisuals'] as bool? ?? d.reactiveVisuals,
       onboardingComplete:
           m['onboardingComplete'] as bool? ?? d.onboardingComplete,
+      source: pick(MusicSource.values, m['source'], d.source),
+      ytDlpPath: m['ytDlpPath'] as String? ?? d.ytDlpPath,
     );
   }
 }

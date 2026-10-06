@@ -12,7 +12,9 @@ abstract class Album with _$Album {
     required String id,
     required String title,
     required ArtistRef artist,
-    required int year,
+
+    /// Unknown for some YouTube albums.
+    int? year,
     required String genre,
     required String coverUrl,
     @Default(<int>[]) List<int> palette,

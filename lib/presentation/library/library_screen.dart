@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/routes.dart';
 import '../../models/download_entry.dart';
 import '../../models/play_event.dart';
+import '../../providers/catalog_providers.dart';
 import '../../providers/download_providers.dart';
 import '../../providers/library_providers.dart';
 import '../../providers/player_providers.dart';
@@ -325,7 +326,7 @@ class _DownloadRow extends ConsumerWidget {
         children: [
           OngakuCover(
             urls: e.kind == DownloadKind.album
-                ? ['assets/images/covers/${e.collectionId}.jpg']
+                ? [?ref.watch(albumProvider(e.collectionId)).value?.coverUrl]
                 : covers,
             size: 52,
             radius: OngakuRadii.sm,

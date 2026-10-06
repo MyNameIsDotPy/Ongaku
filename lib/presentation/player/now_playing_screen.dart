@@ -13,6 +13,7 @@ import '../../providers/library_providers.dart';
 import '../../providers/player_providers.dart';
 import '../../providers/ui_providers.dart';
 import '../../shared/design_system/design_system.dart';
+import '../common/cover_palette.dart';
 import '../common/track_actions.dart';
 import '../queue/queue_view.dart';
 import '../shell/player_bar.dart';
@@ -164,20 +165,24 @@ class _AuraState extends State<_Aura> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final palette = [for (final c in widget.track.palette) Color(c)];
     return RepaintBoundary(
       child: BeatBuilder(
         track: widget.track,
         alwaysTick: true,
-        builder: (context, l, _) => AnimatedBuilder(
-          animation: _ripple,
-          builder: (_, _) => LiquidAura(
-            palette: palette,
-            time: l.time,
-            energy: l.energy,
-            beat: l.beat,
-            ripple: _ripple.isAnimating ? _ripple.value : null,
-          ),
+        builder: (context, l, _) => Consumer(
+          builder: (context, ref, _) {
+            final palette = ref.watch(trackPaletteProvider(widget.track));
+            return AnimatedBuilder(
+              animation: _ripple,
+              builder: (_, _) => LiquidAura(
+                palette: palette,
+                time: l.time,
+                energy: l.energy,
+                beat: l.beat,
+                ripple: _ripple.isAnimating ? _ripple.value : null,
+              ),
+            );
+          },
         ),
       ),
     );
@@ -428,9 +433,9 @@ class _ArtColumn extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final fav = ref.watch(isFavoriteProvider(track.videoId));
-    final glow = track.palette.isEmpty
-        ? const Color(0xFF5A6EA0)
-        : Color(track.palette.first);
+    final glow =
+        ref.watch(trackPaletteProvider(track)).firstOrNull ??
+        const Color(0xFF5A6EA0);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [

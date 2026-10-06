@@ -14,7 +14,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Artist {
 
- String get id; String get name; String? get photoUrl; String? get photoCredit; List<Track> get popular; List<Album> get albums; List<Album> get singles;
+ String get id; String get name;/// Wide photo for the hero (channel banner on YouTube).
+ String? get photoUrl;/// Round avatar (channel logo on YouTube).
+ String? get avatarUrl; String? get photoCredit; List<Track> get popular; List<Album> get albums; List<Album> get singles;
 /// Create a copy of Artist
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +27,16 @@ $ArtistCopyWith<Artist> get copyWith => _$ArtistCopyWithImpl<Artist>(this as Art
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Artist&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.photoCredit, photoCredit) || other.photoCredit == photoCredit)&&const DeepCollectionEquality().equals(other.popular, popular)&&const DeepCollectionEquality().equals(other.albums, albums)&&const DeepCollectionEquality().equals(other.singles, singles));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Artist&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.photoCredit, photoCredit) || other.photoCredit == photoCredit)&&const DeepCollectionEquality().equals(other.popular, popular)&&const DeepCollectionEquality().equals(other.albums, albums)&&const DeepCollectionEquality().equals(other.singles, singles));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,photoUrl,photoCredit,const DeepCollectionEquality().hash(popular),const DeepCollectionEquality().hash(albums),const DeepCollectionEquality().hash(singles));
+int get hashCode => Object.hash(runtimeType,id,name,photoUrl,avatarUrl,photoCredit,const DeepCollectionEquality().hash(popular),const DeepCollectionEquality().hash(albums),const DeepCollectionEquality().hash(singles));
 
 @override
 String toString() {
-  return 'Artist(id: $id, name: $name, photoUrl: $photoUrl, photoCredit: $photoCredit, popular: $popular, albums: $albums, singles: $singles)';
+  return 'Artist(id: $id, name: $name, photoUrl: $photoUrl, avatarUrl: $avatarUrl, photoCredit: $photoCredit, popular: $popular, albums: $albums, singles: $singles)';
 }
 
 
@@ -45,7 +47,7 @@ abstract mixin class $ArtistCopyWith<$Res>  {
   factory $ArtistCopyWith(Artist value, $Res Function(Artist) _then) = _$ArtistCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String? photoUrl, String? photoCredit, List<Track> popular, List<Album> albums, List<Album> singles
+ String id, String name, String? photoUrl, String? avatarUrl, String? photoCredit, List<Track> popular, List<Album> albums, List<Album> singles
 });
 
 
@@ -62,11 +64,12 @@ class _$ArtistCopyWithImpl<$Res>
 
 /// Create a copy of Artist
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? photoUrl = freezed,Object? photoCredit = freezed,Object? popular = null,Object? albums = null,Object? singles = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? photoUrl = freezed,Object? avatarUrl = freezed,Object? photoCredit = freezed,Object? popular = null,Object? albums = null,Object? singles = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,photoUrl: freezed == photoUrl ? _self.photoUrl : photoUrl // ignore: cast_nullable_to_non_nullable
+as String?,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,photoCredit: freezed == photoCredit ? _self.photoCredit : photoCredit // ignore: cast_nullable_to_non_nullable
 as String?,popular: null == popular ? _self.popular : popular // ignore: cast_nullable_to_non_nullable
 as List<Track>,albums: null == albums ? _self.albums : albums // ignore: cast_nullable_to_non_nullable
@@ -156,10 +159,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String? photoUrl,  String? photoCredit,  List<Track> popular,  List<Album> albums,  List<Album> singles)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String? photoUrl,  String? avatarUrl,  String? photoCredit,  List<Track> popular,  List<Album> albums,  List<Album> singles)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Artist() when $default != null:
-return $default(_that.id,_that.name,_that.photoUrl,_that.photoCredit,_that.popular,_that.albums,_that.singles);case _:
+return $default(_that.id,_that.name,_that.photoUrl,_that.avatarUrl,_that.photoCredit,_that.popular,_that.albums,_that.singles);case _:
   return orElse();
 
 }
@@ -177,10 +180,10 @@ return $default(_that.id,_that.name,_that.photoUrl,_that.photoCredit,_that.popul
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String? photoUrl,  String? photoCredit,  List<Track> popular,  List<Album> albums,  List<Album> singles)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String? photoUrl,  String? avatarUrl,  String? photoCredit,  List<Track> popular,  List<Album> albums,  List<Album> singles)  $default,) {final _that = this;
 switch (_that) {
 case _Artist():
-return $default(_that.id,_that.name,_that.photoUrl,_that.photoCredit,_that.popular,_that.albums,_that.singles);case _:
+return $default(_that.id,_that.name,_that.photoUrl,_that.avatarUrl,_that.photoCredit,_that.popular,_that.albums,_that.singles);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +200,10 @@ return $default(_that.id,_that.name,_that.photoUrl,_that.photoCredit,_that.popul
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String? photoUrl,  String? photoCredit,  List<Track> popular,  List<Album> albums,  List<Album> singles)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String? photoUrl,  String? avatarUrl,  String? photoCredit,  List<Track> popular,  List<Album> albums,  List<Album> singles)?  $default,) {final _that = this;
 switch (_that) {
 case _Artist() when $default != null:
-return $default(_that.id,_that.name,_that.photoUrl,_that.photoCredit,_that.popular,_that.albums,_that.singles);case _:
+return $default(_that.id,_that.name,_that.photoUrl,_that.avatarUrl,_that.photoCredit,_that.popular,_that.albums,_that.singles);case _:
   return null;
 
 }
@@ -212,12 +215,15 @@ return $default(_that.id,_that.name,_that.photoUrl,_that.photoCredit,_that.popul
 
 
 class _Artist implements Artist {
-  const _Artist({required this.id, required this.name, this.photoUrl, this.photoCredit, final  List<Track> popular = const <Track>[], final  List<Album> albums = const <Album>[], final  List<Album> singles = const <Album>[]}): _popular = popular,_albums = albums,_singles = singles;
+  const _Artist({required this.id, required this.name, this.photoUrl, this.avatarUrl, this.photoCredit, final  List<Track> popular = const <Track>[], final  List<Album> albums = const <Album>[], final  List<Album> singles = const <Album>[]}): _popular = popular,_albums = albums,_singles = singles;
   
 
 @override final  String id;
 @override final  String name;
+/// Wide photo for the hero (channel banner on YouTube).
 @override final  String? photoUrl;
+/// Round avatar (channel logo on YouTube).
+@override final  String? avatarUrl;
 @override final  String? photoCredit;
  final  List<Track> _popular;
 @override@JsonKey() List<Track> get popular {
@@ -251,16 +257,16 @@ _$ArtistCopyWith<_Artist> get copyWith => __$ArtistCopyWithImpl<_Artist>(this, _
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Artist&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.photoCredit, photoCredit) || other.photoCredit == photoCredit)&&const DeepCollectionEquality().equals(other._popular, _popular)&&const DeepCollectionEquality().equals(other._albums, _albums)&&const DeepCollectionEquality().equals(other._singles, _singles));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Artist&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.photoCredit, photoCredit) || other.photoCredit == photoCredit)&&const DeepCollectionEquality().equals(other._popular, _popular)&&const DeepCollectionEquality().equals(other._albums, _albums)&&const DeepCollectionEquality().equals(other._singles, _singles));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,photoUrl,photoCredit,const DeepCollectionEquality().hash(_popular),const DeepCollectionEquality().hash(_albums),const DeepCollectionEquality().hash(_singles));
+int get hashCode => Object.hash(runtimeType,id,name,photoUrl,avatarUrl,photoCredit,const DeepCollectionEquality().hash(_popular),const DeepCollectionEquality().hash(_albums),const DeepCollectionEquality().hash(_singles));
 
 @override
 String toString() {
-  return 'Artist(id: $id, name: $name, photoUrl: $photoUrl, photoCredit: $photoCredit, popular: $popular, albums: $albums, singles: $singles)';
+  return 'Artist(id: $id, name: $name, photoUrl: $photoUrl, avatarUrl: $avatarUrl, photoCredit: $photoCredit, popular: $popular, albums: $albums, singles: $singles)';
 }
 
 
@@ -271,7 +277,7 @@ abstract mixin class _$ArtistCopyWith<$Res> implements $ArtistCopyWith<$Res> {
   factory _$ArtistCopyWith(_Artist value, $Res Function(_Artist) _then) = __$ArtistCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String? photoUrl, String? photoCredit, List<Track> popular, List<Album> albums, List<Album> singles
+ String id, String name, String? photoUrl, String? avatarUrl, String? photoCredit, List<Track> popular, List<Album> albums, List<Album> singles
 });
 
 
@@ -288,11 +294,12 @@ class __$ArtistCopyWithImpl<$Res>
 
 /// Create a copy of Artist
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? photoUrl = freezed,Object? photoCredit = freezed,Object? popular = null,Object? albums = null,Object? singles = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? photoUrl = freezed,Object? avatarUrl = freezed,Object? photoCredit = freezed,Object? popular = null,Object? albums = null,Object? singles = null,}) {
   return _then(_Artist(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,photoUrl: freezed == photoUrl ? _self.photoUrl : photoUrl // ignore: cast_nullable_to_non_nullable
+as String?,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,photoCredit: freezed == photoCredit ? _self.photoCredit : photoCredit // ignore: cast_nullable_to_non_nullable
 as String?,popular: null == popular ? _self._popular : popular // ignore: cast_nullable_to_non_nullable
 as List<Track>,albums: null == albums ? _self._albums : albums // ignore: cast_nullable_to_non_nullable

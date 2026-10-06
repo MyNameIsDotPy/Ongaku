@@ -47,7 +47,6 @@ class _ArtistBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final a = artist;
-    final c = context.colors;
     final first = a.albums.firstOrNull;
     final glow = first == null || first.palette.isEmpty
         ? null
@@ -58,16 +57,15 @@ class _ArtistBody extends ConsumerWidget {
             circle: true,
             glow: glow,
             artwork: OngakuCover(
-              urls: [?first?.coverUrl],
+              urls: [?(a.avatarUrl ?? first?.coverUrl)],
               circle: true,
               placeholder: OngakuIcons.user,
             ),
             eyebrow: 'Artista',
             title: Text(a.name),
             facts: [
-              HeroFact(
-                '${plural(a.albums.length, 'álbum', 'álbumes')} en el catálogo de ejemplo',
-              ),
+              if (a.albums.isNotEmpty)
+                HeroFact(plural(a.albums.length, 'álbum', 'álbumes')),
             ],
           );
     return OngakuPage(
@@ -96,48 +94,23 @@ class _ArtistBody extends ConsumerWidget {
         ),
         const PageSection(index: 2, child: SectionHeader('Populares')),
         TrackListSliver(tracks: a.popular, source: 'Populares de ${a.name}'),
-        PageSection(
-          top: OngakuSpacing.block,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SectionHeader('Álbumes'),
-              CardGrid(
-                children: [for (final al in a.albums) AlbumCard(album: al)],
-              ),
-            ],
-          ),
-        ),
-        PageSection(
-          top: OngakuSpacing.block,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SectionHeader('Sencillos'),
-              if (a.singles.isEmpty)
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      const TextSpan(
-                        text:
-                            'Los datos de ejemplo no incluyen sencillos; en la app los entrega ',
-                      ),
-                      TextSpan(
-                        text: 'GET /v1/artists/{id}',
-                        style: OngakuTypography.mono(context),
-                      ),
-                      const TextSpan(text: '.'),
-                    ],
+        for (final (title, albums) in [
+          ('Álbumes', a.albums),
+          ('Sencillos', a.singles),
+        ])
+          if (albums.isNotEmpty)
+            PageSection(
+              top: OngakuSpacing.block,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SectionHeader(title),
+                  CardGrid(
+                    children: [for (final al in albums) AlbumCard(album: al)],
                   ),
-                  style: TextStyle(fontSize: 13, color: c.muted),
-                )
-              else
-                CardGrid(
-                  children: [for (final s in a.singles) AlbumCard(album: s)],
-                ),
-            ],
-          ),
-        ),
+                ],
+              ),
+            ),
       ],
     );
   }

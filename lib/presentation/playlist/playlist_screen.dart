@@ -6,10 +6,13 @@ import '../../app/routes.dart';
 import '../../models/download_entry.dart';
 import '../../models/playlist.dart';
 import '../../models/track.dart';
+import '../../models/api_error.dart';
+import '../../providers/catalog_providers.dart';
 import '../../providers/library_providers.dart';
 import '../../providers/player_providers.dart';
 import '../../shared/design_system/design_system.dart';
 import '../album/album_screen.dart';
+import '../common/cover_palette.dart';
 import '../common/async_states.dart';
 import '../common/download_button.dart';
 import '../common/formatters.dart';
@@ -45,24 +48,55 @@ class PlaylistScreen extends ConsumerWidget {
         ],
       );
     }
-    if (p == null) {
+    if (p == null) return _RemotePlaylist(playlistId: playlistId);
+    return _PlaylistBody(playlist: p);
+  }
+}
+
+/// A YouTube playlist opened from search or a pasted link, previewed before
+/// importing (RF-06, RF-22).
+class _RemotePlaylist extends ConsumerWidget {
+  const _RemotePlaylist({required this.playlistId});
+
+  final String playlistId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final remote = ref.watch(remotePlaylistProvider(playlistId));
+    if (remote case AsyncData(:final value)) {
+      return _PlaylistBody(playlist: value);
+    }
+    if (remote.isLoading) {
+      return const OngakuPage(slivers: [PageSection(child: DetailSkeleton())]);
+    }
+    final error = remote.error;
+    if (error is ApiException && error.code != ApiErrorCode.notFound) {
       return OngakuPage(
         slivers: [
           PageSection(
-            child: EmptyState(
-              icon: OngakuIcons.queue,
-              title: 'Playlist no encontrada',
-              message: 'Puede que se haya borrado en otro dispositivo.',
-              action: OngakuButton(
-                label: 'Ir a la biblioteca',
-                onPressed: () => context.go(Routes.library),
-              ),
+            child: ApiErrorView(
+              error: error,
+              onRetry: () => retry(ref, [remotePlaylistProvider(playlistId)]),
             ),
           ),
         ],
       );
     }
-    return _PlaylistBody(playlist: p);
+    return OngakuPage(
+      slivers: [
+        PageSection(
+          child: EmptyState(
+            icon: OngakuIcons.queue,
+            title: 'Playlist no encontrada',
+            message: 'Puede que se haya borrado en otro dispositivo.',
+            action: OngakuButton(
+              label: 'Ir a la biblioteca',
+              onPressed: () => context.go(Routes.library),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -162,9 +196,9 @@ class _PlaylistBodyState extends ConsumerState<_PlaylistBody> {
     final c = context.colors;
     final player = ref.read(playerProvider.notifier);
     final first = p.tracks.firstOrNull;
-    final glow = first == null || first.palette.isEmpty
+    final glow = first == null
         ? null
-        : Color(first.palette.first);
+        : ref.watch(trackPaletteProvider(first)).firstOrNull;
     final eyebrow = p.isOwn
         ? 'Playlist propia'
         : p.inLibrary

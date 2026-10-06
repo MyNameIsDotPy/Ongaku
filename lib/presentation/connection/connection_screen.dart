@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/routes.dart';
+import '../../models/app_settings.dart';
 import '../../models/connection_test.dart';
 import '../../providers/library_providers.dart';
 import '../../providers/repository_providers.dart';
@@ -25,29 +28,15 @@ class _ConnectionScreenState extends ConsumerState<ConnectionScreen> {
   ConnectionTestResult? _result;
   bool _notifications = false;
   bool _battery = false;
-  late final _url = TextEditingController(
-    text: ref.read(settingsProvider).backendUrl,
-  );
-  late final _token = TextEditingController(
-    text: ref.read(settingsProvider).token,
-  );
-
-  @override
-  void dispose() {
-    _url.dispose();
-    _token.dispose();
-    super.dispose();
-  }
 
   Future<void> _test() async {
     setState(() {
       _testing = true;
       _result = null;
     });
-    final settings = ref
-        .read(settingsProvider)
-        .copyWith(backendUrl: _url.text.trim(), token: _token.text.trim());
-    final r = await ref.read(backendClientProvider).testConnection(settings);
+    final r = await ref
+        .read(backendClientProvider)
+        .testConnection(ref.read(settingsProvider));
     if (!mounted) return;
     setState(() {
       _testing = false;
@@ -55,17 +44,8 @@ class _ConnectionScreenState extends ConsumerState<ConnectionScreen> {
     });
   }
 
-  Future<void> _saveAndContinue() async {
-    await ref
-        .read(settingsProvider.notifier)
-        .update(
-          (s) => s.copyWith(
-            backendUrl: _url.text.trim(),
-            token: _token.text.trim(),
-          ),
-        );
-    setState(() => _step = 1);
-  }
+  /// Background permissions only matter on Android.
+  void _continue() => setState(() => _step = Platform.isAndroid ? 1 : 2);
 
   Future<void> _finish() async {
     await ref
@@ -78,6 +58,8 @@ class _ConnectionScreenState extends ConsumerState<ConnectionScreen> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final ok = _result is ConnectionTestSuccess;
+    final source = ref.watch(musicSourceProvider);
+    final local = source == MusicSource.youtube;
     Widget heading(String eyebrow, String title, String lead) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -104,25 +86,29 @@ class _ConnectionScreenState extends ConsumerState<ConnectionScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           heading(
-            'Paso 1 de 3 · Conexión',
-            'Conecta tu backend',
-            'La app solo habla con tu servidor del homelab por Tailscale. Nunca contacta a YouTube directamente.',
+            'Paso 1 de 3 · Fuente',
+            'Prepara tu música',
+            local
+                ? 'Ongaku busca y reproduce directamente desde YouTube en este dispositivo, sin anuncios y sin servidor.'
+                : 'El catálogo de ejemplo funciona sin red; sirve para probar la app.',
           ),
-          OngakuTextField(
-            controller: _url,
-            label: 'URL del backend',
-            mono: true,
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OngakuSegmented<MusicSource>(
+              options: const [
+                (MusicSource.youtube, 'YouTube'),
+                (MusicSource.sample, 'Datos de ejemplo'),
+              ],
+              value: source,
+              onChanged: (v) async {
+                await ref
+                    .read(settingsProvider.notifier)
+                    .update((s) => s.copyWith(source: v));
+                setState(() => _result = null);
+              },
+            ),
           ),
-          const SizedBox(height: 16),
-          OngakuTextField(
-            controller: _token,
-            label: 'Token del dispositivo',
-            mono: true,
-            hint: 'od_…',
-            error: _result is ConnectionTestFailure,
-            onSubmitted: (_) => _test(),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           SizedBox(
             height: 24,
             child: Align(
@@ -133,23 +119,25 @@ class _ConnectionScreenState extends ConsumerState<ConnectionScreen> {
                         OngakuSpinner(size: 16, color: c.muted),
                         const SizedBox(width: 8),
                         Text(
-                          'Probando conexión…',
+                          'Probando acceso a YouTube…',
                           style: TextStyle(fontSize: 13, color: c.muted),
                         ),
                       ],
                     )
                   : switch (_result) {
-                      ConnectionTestSuccess() => const StatusLabel(
+                      ConnectionTestSuccess(:final latencyMs) => StatusLabel(
                         ok: true,
                         label:
-                            'Conexión correcta · el backend responde y la extracción funciona',
+                            'Funciona · la extracción respondió en $latencyMs ms',
                       ),
                       ConnectionTestFailure(:final code) => StatusLabel(
                         ok: false,
                         label: '${code.wire} · ${code.description}',
                       ),
                       null => Text(
-                        'Prueba: cualquier token que empiece por “od_” funciona.',
+                        local
+                            ? 'Prueba el acceso antes de continuar.'
+                            : 'No necesita conexión.',
                         style: TextStyle(fontSize: 13, color: c.muted),
                       ),
                     },
@@ -161,13 +149,14 @@ class _ConnectionScreenState extends ConsumerState<ConnectionScreen> {
             spacing: 10,
             runSpacing: 10,
             children: [
-              OngakuButton(
-                label: 'Probar conexión',
-                onPressed: _testing ? null : _test,
-              ),
+              if (local)
+                OngakuButton(
+                  label: 'Probar acceso',
+                  onPressed: _testing ? null : _test,
+                ),
               OngakuButton.primary(
-                label: 'Guardar y continuar',
-                onPressed: ok ? _saveAndContinue : null,
+                label: 'Continuar',
+                onPressed: ok || !local ? _continue : null,
               ),
             ],
           ),
@@ -224,7 +213,7 @@ class _ConnectionScreenState extends ConsumerState<ConnectionScreen> {
               heading(
                 'Paso 3 de 3 · Listo',
                 'Todo listo',
-                'Tu biblioteca se sincronizó desde el backend: '
+                'Tu biblioteca está lista en este dispositivo: '
                     '${plural(lib.ownedPlaylists.length, 'playlist', 'playlists')}, '
                     '${plural(lib.favorites.length, 'favorito', 'favoritos')} y tu historial.',
               ),

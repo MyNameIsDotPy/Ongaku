@@ -14,6 +14,6 @@ void main() {
       child: const OngakuApp(),
     ));
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.text('Conecta tu backend'), findsOneWidget);
+    expect(find.text('Prepara tu música'), findsOneWidget);
   });
 }

@@ -8,6 +8,8 @@ import '../../models/playlist.dart';
 import '../../models/track.dart';
 import '../../providers/demo_providers.dart';
 import '../../providers/download_providers.dart';
+import '../../providers/network_providers.dart';
+import '../../providers/settings_providers.dart';
 import '../../providers/library_providers.dart';
 import '../../providers/player_providers.dart';
 import '../../shared/design_system/design_system.dart';
@@ -240,6 +242,16 @@ extension TrackActions on WidgetRef {
   }) async {
     if (read(downloadsProvider)[id]?.isDone ?? false) {
       showOngakuToast(context, 'Ya está disponible sin conexión');
+      return;
+    }
+    // RF-27: respect "Descargar solo con Wi-Fi".
+    if (read(settingsProvider).downloadOnWifiOnly &&
+        read(onMobileDataProvider)) {
+      showOngakuToast(
+        context,
+        'Las descargas solo se hacen con Wi-Fi',
+        error: true,
+      );
       return;
     }
     if (!read(backendOnlineProvider)) {

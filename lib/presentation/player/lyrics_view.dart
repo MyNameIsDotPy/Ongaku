@@ -8,6 +8,8 @@ import '../../models/lyrics.dart';
 import '../../models/track.dart';
 import '../../providers/catalog_providers.dart';
 import '../../providers/player_providers.dart';
+import '../../models/app_settings.dart';
+import '../../providers/repository_providers.dart';
 import '../../shared/design_system/design_system.dart';
 import 'beat_builder.dart';
 
@@ -160,8 +162,10 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                const OngakuTag(
-                  'Letra de muestra',
+                OngakuTag(
+                  ref.watch(musicSourceProvider) == MusicSource.youtube
+                      ? 'lrclib.net'
+                      : 'Letra de muestra',
                   background: Color(0x590A0A0A),
                 ),
               ],

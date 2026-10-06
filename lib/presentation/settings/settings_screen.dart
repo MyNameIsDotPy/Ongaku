@@ -3,9 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../app/routes.dart';
+import '../../core/local/yt_dlp.dart';
 import '../../models/app_settings.dart';
 import '../../models/connection_test.dart';
 import '../../models/demo_scenario.dart';
@@ -98,9 +97,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final online = ref.watch(backendOnlineProvider);
     final scenario = ref.watch(demoScenarioProvider);
     final downloads = ref.watch(downloadsProvider);
-    final token = s.token.isEmpty
-        ? 'Sin configurar'
-        : '${s.token.substring(0, s.token.length.clamp(0, 6))}••••••••••';
+    final source = ref.watch(musicSourceProvider);
+    final local = source == MusicSource.youtube;
 
     final status = _testing
         ? Row(
@@ -117,7 +115,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         : switch (_test) {
             ConnectionTestSuccess(:final latencyMs) => StatusLabel(
               ok: true,
-              label: 'Conectado · respuesta en $latencyMs ms',
+              label: 'Funciona · respuesta en $latencyMs ms',
             ),
             ConnectionTestFailure(:final code) => StatusLabel(
               ok: false,
@@ -125,7 +123,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             null => StatusLabel(
               ok: online,
-              label: online ? 'Conectado · yt-dlp al día' : 'Sin respuesta',
+              label: online ? 'Conectado' : 'Sin conexión',
             ),
           };
 
@@ -141,33 +139,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     final groups = [
       SettingsGroup(
-        title: 'Backend',
+        title: 'Fuente de música',
         children: [
           SettingsRow(
-            title: 'Servidor',
-            description: s.backendUrl,
-            monoDescription: true,
-            trailing: status,
+            title: 'Origen',
+            description: local
+                ? 'YouTube, directamente desde este dispositivo'
+                : 'Catálogo de ejemplo, sin red',
+            trailing: OngakuSegmented<MusicSource>(
+              options: const [
+                (MusicSource.youtube, 'YouTube'),
+                (MusicSource.sample, 'Ejemplo'),
+              ],
+              value: source,
+              onChanged: (v) {
+                setState(() => _test = null);
+                _update((x) => x.copyWith(source: v));
+              },
+            ),
           ),
           SettingsRow(
-            title: 'Token del dispositivo',
-            description: token,
-            monoDescription: true,
+            title: local ? 'Acceso a YouTube' : 'Conexión simulada',
+            description: local
+                ? 'Extrae un video conocido para comprobar que todo funciona'
+                : null,
             trailing: Wrap(
-              spacing: 8,
+              spacing: 12,
               runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
+                status,
                 OngakuButton(
-                  label: 'Probar conexión',
+                  label: 'Probar',
                   onPressed: _testing ? null : _testConnection,
-                ),
-                OngakuButton.ghost(
-                  label: 'Configurar',
-                  onPressed: () => context.go(Routes.connection),
                 ),
               ],
             ),
           ),
+          if (local && YtDlp.supported) const _YtDlpRow(),
         ],
       ),
       SettingsGroup(
@@ -306,28 +315,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               },
             ),
           ),
-          const SettingsRow(
+          SettingsRow(
             title: 'Versión',
-            description: 'App 1.0.0 · Backend: datos de ejemplo (Fake*)',
+            description: local
+                ? 'App 1.0.0 · extracción local (youtube_explode_dart)'
+                : 'App 1.0.0 · datos de ejemplo',
             monoDescription: true,
           ),
         ],
       ),
-      SettingsGroup(
-        title: 'Simulación del backend',
-        children: [
-          SettingsRow(
-            title: 'Estado simulado',
-            description:
-                'Los repositorios de ejemplo responden como el backend en este estado: cargando, vacío, error o sin conexión.',
-            trailing: OngakuSegmented<DemoScenario>(
-              options: [for (final d in DemoScenario.values) (d, d.label)],
-              value: scenario,
-              onChanged: ref.read(demoScenarioProvider.notifier).set,
+      if (!local)
+        SettingsGroup(
+          title: 'Simulación del backend',
+          children: [
+            SettingsRow(
+              title: 'Estado simulado',
+              description:
+                  'Los repositorios de ejemplo responden como el backend en este estado: cargando, vacío, error o sin conexión.',
+              trailing: OngakuSegmented<DemoScenario>(
+                options: [for (final d in DemoScenario.values) (d, d.label)],
+                value: scenario,
+                onChanged: ref.read(demoScenarioProvider.notifier).set,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
     ];
 
     return OngakuPage(
@@ -342,6 +354,69 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// PC fallback extractor: shows the detected yt-dlp and lets you point to
+/// a specific executable.
+class _YtDlpRow extends ConsumerStatefulWidget {
+  const _YtDlpRow();
+
+  @override
+  ConsumerState<_YtDlpRow> createState() => _YtDlpRowState();
+}
+
+class _YtDlpRowState extends ConsumerState<_YtDlpRow> {
+  late final _path = TextEditingController(
+    text: ref.read(settingsProvider).ytDlpPath,
+  );
+
+  @override
+  void dispose() {
+    _path.dispose();
+    super.dispose();
+  }
+
+  void _save() => ref
+      .read(settingsProvider.notifier)
+      .update((s) => s.copyWith(ytDlpPath: _path.text.trim()));
+
+  @override
+  Widget build(BuildContext context) {
+    final version = ref.watch(ytDlpVersionProvider);
+    final status = switch (version) {
+      AsyncData(value: final v?) => StatusLabel(ok: true, label: 'yt-dlp $v'),
+      AsyncData() => const StatusLabel(
+        ok: false,
+        label: 'yt-dlp no encontrado',
+      ),
+      AsyncError() => const StatusLabel(ok: false, label: 'yt-dlp no responde'),
+      _ => OngakuSpinner(size: 16, color: context.colors.muted),
+    };
+    return SettingsRow(
+      title: 'yt-dlp (respaldo en PC)',
+      description:
+          'Se usa si la extracción integrada falla. Vacío = buscar en el PATH. '
+          'Actualízalo con “yt-dlp -U”.',
+      trailing: Wrap(
+        spacing: 12,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          status,
+          SizedBox(
+            width: 260,
+            child: OngakuTextField(
+              controller: _path,
+              mono: true,
+              hint: '/opt/homebrew/bin/yt-dlp',
+              onSubmitted: (_) => _save(),
+            ),
+          ),
+          OngakuButton.ghost(label: 'Guardar', onPressed: _save),
+        ],
+      ),
     );
   }
 }

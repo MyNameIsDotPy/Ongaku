@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 mixin _$Playlist {
 
  String get id; String get name; PlaylistSource get source; String? get sourceId; String? get owner; DateTime get createdAt; List<Track> get tracks;/// False for a YouTube playlist being previewed before import.
- bool get inLibrary;
+ bool get inLibrary;/// Artwork and size known before the tracks load (search results).
+ String? get artworkUrl; int? get declaredTrackCount;
 /// Create a copy of Playlist
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -26,16 +27,16 @@ $PlaylistCopyWith<Playlist> get copyWith => _$PlaylistCopyWithImpl<Playlist>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Playlist&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourceId, sourceId) || other.sourceId == sourceId)&&(identical(other.owner, owner) || other.owner == owner)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other.tracks, tracks)&&(identical(other.inLibrary, inLibrary) || other.inLibrary == inLibrary));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Playlist&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourceId, sourceId) || other.sourceId == sourceId)&&(identical(other.owner, owner) || other.owner == owner)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other.tracks, tracks)&&(identical(other.inLibrary, inLibrary) || other.inLibrary == inLibrary)&&(identical(other.artworkUrl, artworkUrl) || other.artworkUrl == artworkUrl)&&(identical(other.declaredTrackCount, declaredTrackCount) || other.declaredTrackCount == declaredTrackCount));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,source,sourceId,owner,createdAt,const DeepCollectionEquality().hash(tracks),inLibrary);
+int get hashCode => Object.hash(runtimeType,id,name,source,sourceId,owner,createdAt,const DeepCollectionEquality().hash(tracks),inLibrary,artworkUrl,declaredTrackCount);
 
 @override
 String toString() {
-  return 'Playlist(id: $id, name: $name, source: $source, sourceId: $sourceId, owner: $owner, createdAt: $createdAt, tracks: $tracks, inLibrary: $inLibrary)';
+  return 'Playlist(id: $id, name: $name, source: $source, sourceId: $sourceId, owner: $owner, createdAt: $createdAt, tracks: $tracks, inLibrary: $inLibrary, artworkUrl: $artworkUrl, declaredTrackCount: $declaredTrackCount)';
 }
 
 
@@ -46,7 +47,7 @@ abstract mixin class $PlaylistCopyWith<$Res>  {
   factory $PlaylistCopyWith(Playlist value, $Res Function(Playlist) _then) = _$PlaylistCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, PlaylistSource source, String? sourceId, String? owner, DateTime createdAt, List<Track> tracks, bool inLibrary
+ String id, String name, PlaylistSource source, String? sourceId, String? owner, DateTime createdAt, List<Track> tracks, bool inLibrary, String? artworkUrl, int? declaredTrackCount
 });
 
 
@@ -63,7 +64,7 @@ class _$PlaylistCopyWithImpl<$Res>
 
 /// Create a copy of Playlist
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? source = null,Object? sourceId = freezed,Object? owner = freezed,Object? createdAt = null,Object? tracks = null,Object? inLibrary = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? source = null,Object? sourceId = freezed,Object? owner = freezed,Object? createdAt = null,Object? tracks = null,Object? inLibrary = null,Object? artworkUrl = freezed,Object? declaredTrackCount = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -73,7 +74,9 @@ as String?,owner: freezed == owner ? _self.owner : owner // ignore: cast_nullabl
 as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,tracks: null == tracks ? _self.tracks : tracks // ignore: cast_nullable_to_non_nullable
 as List<Track>,inLibrary: null == inLibrary ? _self.inLibrary : inLibrary // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,artworkUrl: freezed == artworkUrl ? _self.artworkUrl : artworkUrl // ignore: cast_nullable_to_non_nullable
+as String?,declaredTrackCount: freezed == declaredTrackCount ? _self.declaredTrackCount : declaredTrackCount // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
@@ -158,10 +161,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  PlaylistSource source,  String? sourceId,  String? owner,  DateTime createdAt,  List<Track> tracks,  bool inLibrary)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  PlaylistSource source,  String? sourceId,  String? owner,  DateTime createdAt,  List<Track> tracks,  bool inLibrary,  String? artworkUrl,  int? declaredTrackCount)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Playlist() when $default != null:
-return $default(_that.id,_that.name,_that.source,_that.sourceId,_that.owner,_that.createdAt,_that.tracks,_that.inLibrary);case _:
+return $default(_that.id,_that.name,_that.source,_that.sourceId,_that.owner,_that.createdAt,_that.tracks,_that.inLibrary,_that.artworkUrl,_that.declaredTrackCount);case _:
   return orElse();
 
 }
@@ -179,10 +182,10 @@ return $default(_that.id,_that.name,_that.source,_that.sourceId,_that.owner,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  PlaylistSource source,  String? sourceId,  String? owner,  DateTime createdAt,  List<Track> tracks,  bool inLibrary)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  PlaylistSource source,  String? sourceId,  String? owner,  DateTime createdAt,  List<Track> tracks,  bool inLibrary,  String? artworkUrl,  int? declaredTrackCount)  $default,) {final _that = this;
 switch (_that) {
 case _Playlist():
-return $default(_that.id,_that.name,_that.source,_that.sourceId,_that.owner,_that.createdAt,_that.tracks,_that.inLibrary);case _:
+return $default(_that.id,_that.name,_that.source,_that.sourceId,_that.owner,_that.createdAt,_that.tracks,_that.inLibrary,_that.artworkUrl,_that.declaredTrackCount);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +202,10 @@ return $default(_that.id,_that.name,_that.source,_that.sourceId,_that.owner,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  PlaylistSource source,  String? sourceId,  String? owner,  DateTime createdAt,  List<Track> tracks,  bool inLibrary)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  PlaylistSource source,  String? sourceId,  String? owner,  DateTime createdAt,  List<Track> tracks,  bool inLibrary,  String? artworkUrl,  int? declaredTrackCount)?  $default,) {final _that = this;
 switch (_that) {
 case _Playlist() when $default != null:
-return $default(_that.id,_that.name,_that.source,_that.sourceId,_that.owner,_that.createdAt,_that.tracks,_that.inLibrary);case _:
+return $default(_that.id,_that.name,_that.source,_that.sourceId,_that.owner,_that.createdAt,_that.tracks,_that.inLibrary,_that.artworkUrl,_that.declaredTrackCount);case _:
   return null;
 
 }
@@ -214,7 +217,7 @@ return $default(_that.id,_that.name,_that.source,_that.sourceId,_that.owner,_tha
 
 
 class _Playlist extends Playlist {
-  const _Playlist({required this.id, required this.name, required this.source, this.sourceId, this.owner, required this.createdAt, final  List<Track> tracks = const <Track>[], this.inLibrary = true}): _tracks = tracks,super._();
+  const _Playlist({required this.id, required this.name, required this.source, this.sourceId, this.owner, required this.createdAt, final  List<Track> tracks = const <Track>[], this.inLibrary = true, this.artworkUrl, this.declaredTrackCount}): _tracks = tracks,super._();
   
 
 @override final  String id;
@@ -232,6 +235,9 @@ class _Playlist extends Playlist {
 
 /// False for a YouTube playlist being previewed before import.
 @override@JsonKey() final  bool inLibrary;
+/// Artwork and size known before the tracks load (search results).
+@override final  String? artworkUrl;
+@override final  int? declaredTrackCount;
 
 /// Create a copy of Playlist
 /// with the given fields replaced by the non-null parameter values.
@@ -243,16 +249,16 @@ _$PlaylistCopyWith<_Playlist> get copyWith => __$PlaylistCopyWithImpl<_Playlist>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Playlist&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourceId, sourceId) || other.sourceId == sourceId)&&(identical(other.owner, owner) || other.owner == owner)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other._tracks, _tracks)&&(identical(other.inLibrary, inLibrary) || other.inLibrary == inLibrary));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Playlist&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourceId, sourceId) || other.sourceId == sourceId)&&(identical(other.owner, owner) || other.owner == owner)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other._tracks, _tracks)&&(identical(other.inLibrary, inLibrary) || other.inLibrary == inLibrary)&&(identical(other.artworkUrl, artworkUrl) || other.artworkUrl == artworkUrl)&&(identical(other.declaredTrackCount, declaredTrackCount) || other.declaredTrackCount == declaredTrackCount));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,source,sourceId,owner,createdAt,const DeepCollectionEquality().hash(_tracks),inLibrary);
+int get hashCode => Object.hash(runtimeType,id,name,source,sourceId,owner,createdAt,const DeepCollectionEquality().hash(_tracks),inLibrary,artworkUrl,declaredTrackCount);
 
 @override
 String toString() {
-  return 'Playlist(id: $id, name: $name, source: $source, sourceId: $sourceId, owner: $owner, createdAt: $createdAt, tracks: $tracks, inLibrary: $inLibrary)';
+  return 'Playlist(id: $id, name: $name, source: $source, sourceId: $sourceId, owner: $owner, createdAt: $createdAt, tracks: $tracks, inLibrary: $inLibrary, artworkUrl: $artworkUrl, declaredTrackCount: $declaredTrackCount)';
 }
 
 
@@ -263,7 +269,7 @@ abstract mixin class _$PlaylistCopyWith<$Res> implements $PlaylistCopyWith<$Res>
   factory _$PlaylistCopyWith(_Playlist value, $Res Function(_Playlist) _then) = __$PlaylistCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, PlaylistSource source, String? sourceId, String? owner, DateTime createdAt, List<Track> tracks, bool inLibrary
+ String id, String name, PlaylistSource source, String? sourceId, String? owner, DateTime createdAt, List<Track> tracks, bool inLibrary, String? artworkUrl, int? declaredTrackCount
 });
 
 
@@ -280,7 +286,7 @@ class __$PlaylistCopyWithImpl<$Res>
 
 /// Create a copy of Playlist
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? source = null,Object? sourceId = freezed,Object? owner = freezed,Object? createdAt = null,Object? tracks = null,Object? inLibrary = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? source = null,Object? sourceId = freezed,Object? owner = freezed,Object? createdAt = null,Object? tracks = null,Object? inLibrary = null,Object? artworkUrl = freezed,Object? declaredTrackCount = freezed,}) {
   return _then(_Playlist(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -290,7 +296,9 @@ as String?,owner: freezed == owner ? _self.owner : owner // ignore: cast_nullabl
 as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,tracks: null == tracks ? _self._tracks : tracks // ignore: cast_nullable_to_non_nullable
 as List<Track>,inLibrary: null == inLibrary ? _self.inLibrary : inLibrary // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,artworkUrl: freezed == artworkUrl ? _self.artworkUrl : artworkUrl // ignore: cast_nullable_to_non_nullable
+as String?,declaredTrackCount: freezed == declaredTrackCount ? _self.declaredTrackCount : declaredTrackCount // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 

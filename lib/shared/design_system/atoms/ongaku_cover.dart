@@ -45,7 +45,10 @@ class OngakuCover extends StatelessWidget {
       image: coverImage(u),
       fit: BoxFit.cover,
       gaplessPlayback: true,
-      errorBuilder: (_, _, _) => _placeholder(c),
+      // Not every YouTube video has a max-res thumbnail.
+      errorBuilder: (_, _, _) => u.contains('/maxresdefault.')
+          ? img(u.replaceFirst('/maxresdefault.', '/hqdefault.'))
+          : _placeholder(c),
     );
     final Widget content;
     if (urls.isEmpty) {

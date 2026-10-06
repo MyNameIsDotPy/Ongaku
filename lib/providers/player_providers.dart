@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/catalog_repository.dart';
+import '../core/local/local_catalog_repository.dart';
 import '../core/player_controller.dart';
+import '../models/app_settings.dart';
 import '../models/player_snapshot.dart';
 import '../models/track.dart';
 import 'library_providers.dart';
+import 'player_persistence.dart';
 import 'repository_providers.dart';
 
 /// Mirrors `PlayerController` snapshots and exposes its commands. Records a
@@ -13,6 +18,7 @@ class PlayerNotifier extends Notifier<PlayerSnapshot> {
   @override
   PlayerSnapshot build() {
     final controller = ref.watch(playerControllerProvider);
+    final local = ref.watch(musicSourceProvider) == MusicSource.youtube;
     final sub = controller.snapshots.listen((s) {
       final previous = state;
       state = s;
@@ -20,8 +26,26 @@ class PlayerNotifier extends Notifier<PlayerSnapshot> {
           (!previous.isPlaying || previous.current != s.current)) {
         ref.read(libraryProvider.notifier).recordPlay(s.current!);
       }
+      if (local) {
+        final catalog = ref.read(catalogRepositoryProvider);
+        if (catalog is LocalCatalogRepository && s.current != null) {
+          catalog.remember(s.current!);
+        }
+        if (previous.current != s.current || previous.status != s.status) {
+          saveQueue(ref, s, controller.position);
+        }
+      }
     });
-    ref.onDispose(sub.cancel);
+    // Keep the saved position fresh while playing (RF-16).
+    final timer = local
+        ? Timer.periodic(const Duration(seconds: 5), (_) {
+            if (state.isPlaying) saveQueue(ref, state, controller.position);
+          })
+        : null;
+    ref.onDispose(() {
+      sub.cancel();
+      timer?.cancel();
+    });
     return controller.snapshot;
   }
 

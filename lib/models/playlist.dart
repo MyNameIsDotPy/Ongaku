@@ -21,6 +21,10 @@ abstract class Playlist with _$Playlist {
 
     /// False for a YouTube playlist being previewed before import.
     @Default(true) bool inLibrary,
+
+    /// Artwork and size known before the tracks load (search results).
+    String? artworkUrl,
+    int? declaredTrackCount,
   }) = _Playlist;
 
   bool get isOwn => source == PlaylistSource.own;
@@ -29,6 +33,9 @@ abstract class Playlist with _$Playlist {
       tracks.fold(Duration.zero, (sum, t) => sum + t.duration);
 
   /// Up to four distinct covers, for the mosaic artwork.
-  List<String> get covers =>
-      tracks.map((t) => t.coverUrl).toSet().take(4).toList();
+  List<String> get covers => tracks.isEmpty && artworkUrl != null
+      ? [artworkUrl!]
+      : tracks.map((t) => t.coverUrl).toSet().take(4).toList();
+
+  int get size => tracks.isEmpty ? declaredTrackCount ?? 0 : tracks.length;
 }
