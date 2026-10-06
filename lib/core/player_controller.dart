@@ -6,12 +6,16 @@ import '../models/track.dart';
 abstract interface class PlayerController {
   PlayerSnapshot get snapshot;
   Stream<PlayerSnapshot> get snapshots;
+  bool get playWhenReady;
 
   Duration get position;
   Stream<Duration> get positions;
 
   void play(List<Track> tracks, {int start = 0, String? sourceLabel});
   void toggle();
+  void resume();
+  void pause();
+  void stop();
   void next();
   void previous();
   void seek(Duration position);

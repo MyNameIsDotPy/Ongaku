@@ -18,6 +18,9 @@ abstract interface class PlaybackEngine {
   /// True while stalled mid-playback waiting for data.
   Stream<bool> get buffering;
 
+  /// Native play/pause changes, including audio focus and unplugged headsets.
+  Stream<bool> get playing;
+
   /// The loaded track reached its end.
   Stream<void> get completed;
 

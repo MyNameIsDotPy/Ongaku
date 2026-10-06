@@ -27,6 +27,7 @@ class OngakuAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   void _publish(PlayerSnapshot s) {
+    final playing = _player?.playWhenReady ?? false;
     final t = s.current;
     if (t != null && mediaItem.value?.id != t.videoId) {
       mediaItem.add(
@@ -47,7 +48,7 @@ class OngakuAudioHandler extends BaseAudioHandler with SeekHandler {
       PlaybackState(
         controls: [
           MediaControl.skipToPrevious,
-          if (s.isPlaying) MediaControl.pause else MediaControl.play,
+          if (playing) MediaControl.pause else MediaControl.play,
           MediaControl.skipToNext,
         ],
         systemActions: const {MediaAction.seek},
@@ -61,7 +62,7 @@ class OngakuAudioHandler extends BaseAudioHandler with SeekHandler {
           PlaybackStatus.completed => AudioProcessingState.completed,
           PlaybackStatus.error => AudioProcessingState.error,
         },
-        playing: s.isPlaying || s.status == PlaybackStatus.buffering,
+        playing: playing,
         updatePosition: position,
         queueIndex: s.index,
         errorMessage: s.error?.message,
@@ -81,16 +82,16 @@ class OngakuAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> play() async {
-    if (!(_player?.snapshot.isPlaying ?? true)) _player!.toggle();
+    _player?.resume();
   }
 
   @override
   Future<void> pause() async {
-    if (_player?.snapshot.isPlaying ?? false) _player!.toggle();
+    _player?.pause();
   }
 
   @override
-  Future<void> stop() => pause();
+  Future<void> stop() async => _player?.stop();
 
   @override
   Future<void> skipToNext() async => _player?.next();

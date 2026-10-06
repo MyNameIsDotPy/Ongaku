@@ -31,6 +31,7 @@ class QueuePlayerController implements PlayerController {
       _engine.positions.listen(_onPosition),
       _engine.completed.listen((_) => _advance(auto: true)),
       _engine.buffering.listen(_onBuffering),
+      _engine.playing.listen(_onPlaying),
       _engine.errors.listen((e) => _fail(_snapshot.current, e)),
     ];
   }
@@ -44,6 +45,9 @@ class QueuePlayerController implements PlayerController {
   Timer? _skipTimer;
   Timer? _sleepTimer;
   int _loadToken = 0;
+  int _consecutiveFailures = 0;
+  bool _playWhenReady = false;
+  bool _disposed = false;
 
   /// Where a restored (idle) queue resumes.
   Duration _resumeAt;
@@ -53,6 +57,9 @@ class QueuePlayerController implements PlayerController {
 
   @override
   Stream<PlayerSnapshot> get snapshots => _snapshots.stream;
+
+  @override
+  bool get playWhenReady => _playWhenReady;
 
   @override
   Duration get position =>
@@ -76,7 +83,7 @@ class QueuePlayerController implements PlayerController {
         _snapshot.isPlaying &&
         _snapshot.sleep is SleepAtEndOfTrack &&
         p >= cur.duration - const Duration(milliseconds: 300)) {
-      _engine.pause();
+      pause();
       _set(_snapshot.copyWith(status: PlaybackStatus.paused, sleep: null));
     }
   }
@@ -88,18 +95,36 @@ class QueuePlayerController implements PlayerController {
     }
   }
 
+  void _onPlaying(bool playing) {
+    if (_snapshot.status != PlaybackStatus.playing &&
+        _snapshot.status != PlaybackStatus.paused &&
+        _snapshot.status != PlaybackStatus.buffering) {
+      return;
+    }
+    _playWhenReady = playing;
+    if (!playing) {
+      _setStatus(PlaybackStatus.paused);
+    } else if (_snapshot.status == PlaybackStatus.paused) {
+      _setStatus(PlaybackStatus.playing);
+    }
+  }
+
   Future<void> _load([Duration from = Duration.zero]) async {
     final track = _snapshot.current;
     if (track == null) return;
     final token = ++_loadToken;
+    _playWhenReady = true;
     _skipTimer?.cancel();
     _setStatus(PlaybackStatus.loading);
     if (!_positions.isClosed) _positions.add(from);
     try {
       await _engine.load(track, from: from);
-      if (token != _loadToken) return;
-      _setStatus(PlaybackStatus.playing);
-      await _engine.play();
+      if (_disposed || token != _loadToken) return;
+      _consecutiveFailures = 0;
+      _setStatus(
+        _playWhenReady ? PlaybackStatus.playing : PlaybackStatus.paused,
+      );
+      if (_playWhenReady) await _engine.play();
     } catch (e) {
       if (token == _loadToken) _fail(track, e);
     }
@@ -107,19 +132,32 @@ class QueuePlayerController implements PlayerController {
 
   /// RNF-12: warn and jump to the next song without stopping the queue.
   void _fail(Track? track, Object e) {
+    if (_disposed || _snapshot.status == PlaybackStatus.error) return;
+    _skipTimer?.cancel();
+    _playWhenReady = false;
+    _engine.stop();
     final api = e is ApiException
         ? e
         : ApiException(ApiErrorCode.extractionFailed, '$e');
-    final message =
-        '“${track?.title ?? 'La canción'}” no está disponible. '
-        'Saltando a la siguiente.';
+    _consecutiveFailures++;
+    final canSkip =
+        api.code != ApiErrorCode.backendOffline &&
+        api.code != ApiErrorCode.rateLimited &&
+        _consecutiveFailures < _snapshot.queue.length &&
+        (_snapshot.index < _snapshot.queue.length - 1 ||
+            _snapshot.repeat == QueueRepeat.all);
+    final message = canSkip
+        ? '“${track?.title ?? 'La canción'}” no está disponible. '
+              'Saltando a la siguiente.'
+        : api.message ?? api.code.description;
     _setStatus(PlaybackStatus.error, error: ApiException(api.code, message));
-    _skipTimer = Timer(const Duration(milliseconds: 1600), next);
+    if (canSkip) _skipTimer = Timer(const Duration(milliseconds: 1600), next);
   }
 
   @override
   void play(List<Track> tracks, {int start = 0, String? sourceLabel}) {
     if (tracks.isEmpty) return;
+    _consecutiveFailures = 0;
     _unshuffled = null;
     _set(
       _snapshot.copyWith(
@@ -135,12 +173,21 @@ class QueuePlayerController implements PlayerController {
 
   @override
   void toggle() {
+    if (_playWhenReady) {
+      pause();
+    } else {
+      resume();
+    }
+  }
+
+  @override
+  void resume() {
     if (_snapshot.current == null) return;
     switch (_snapshot.status) {
       case PlaybackStatus.playing || PlaybackStatus.buffering:
-        _engine.pause();
-        _setStatus(PlaybackStatus.paused);
+        break;
       case PlaybackStatus.paused:
+        _playWhenReady = true;
         _setStatus(PlaybackStatus.playing);
         _engine.play();
       case PlaybackStatus.idle:
@@ -148,16 +195,46 @@ class QueuePlayerController implements PlayerController {
       case PlaybackStatus.completed:
         _set(_snapshot.copyWith(index: 0));
         _load();
-      case PlaybackStatus.loading || PlaybackStatus.error:
-        break;
+      case PlaybackStatus.loading:
+        _playWhenReady = true;
+        _set(_snapshot);
+      case PlaybackStatus.error:
+        _consecutiveFailures = 0;
+        _load();
     }
+  }
+
+  @override
+  void pause() {
+    _playWhenReady = false;
+    _engine.pause();
+    // Let the pending load finish preparing, but never autoplay after pause.
+    if (_snapshot.status != PlaybackStatus.loading &&
+        (_snapshot.isPlaying || _snapshot.status == PlaybackStatus.buffering)) {
+      _setStatus(PlaybackStatus.paused);
+    } else if (_snapshot.status == PlaybackStatus.loading) {
+      _set(_snapshot);
+    }
+  }
+
+  @override
+  void stop() {
+    ++_loadToken;
+    _skipTimer?.cancel();
+    _playWhenReady = false;
+    _resumeAt = Duration.zero;
+    _engine.stop();
+    _setStatus(PlaybackStatus.idle);
+    if (!_positions.isClosed) _positions.add(Duration.zero);
   }
 
   @override
   void seek(Duration to) {
     final d = _snapshot.current?.duration ?? Duration.zero;
     final target = Duration(
-      milliseconds: to.inMilliseconds.clamp(0, max(0, d.inMilliseconds - 500)),
+      milliseconds: d > Duration.zero
+          ? to.inMilliseconds.clamp(0, max(0, d.inMilliseconds - 500))
+          : max(0, to.inMilliseconds),
     );
     if (_snapshot.status == PlaybackStatus.idle) {
       _resumeAt = target;
@@ -165,19 +242,27 @@ class QueuePlayerController implements PlayerController {
       return;
     }
     final wasPlaying = _snapshot.isPlaying;
+    final token = _loadToken;
     if (wasPlaying) _setStatus(PlaybackStatus.buffering);
-    _engine.seek(target).then((_) {
-      if (!_positions.isClosed) _positions.add(target);
-      if (wasPlaying && _snapshot.status == PlaybackStatus.buffering) {
-        _setStatus(PlaybackStatus.playing);
-      }
-    });
+    _engine
+        .seek(target)
+        .then((_) {
+          if (_disposed || token != _loadToken) return;
+          if (!_positions.isClosed) _positions.add(target);
+          if (wasPlaying && _snapshot.status == PlaybackStatus.buffering) {
+            _setStatus(PlaybackStatus.playing);
+          }
+        })
+        .catchError((Object e) {
+          if (!_disposed && token == _loadToken) _fail(_snapshot.current, e);
+        });
   }
 
   @override
   void next() => _advance();
 
   void _advance({bool auto = false}) {
+    if (_disposed || (auto && !_playWhenReady)) return;
     if (auto && _snapshot.repeat == QueueRepeat.one) {
       _load();
       return;
@@ -192,6 +277,7 @@ class QueuePlayerController implements PlayerController {
       _load();
     } else {
       _loadToken++;
+      _playWhenReady = false;
       _skipTimer?.cancel();
       _engine.stop();
       if (!_positions.isClosed) _positions.add(Duration.zero);
@@ -317,7 +403,7 @@ class QueuePlayerController implements PlayerController {
     _set(_snapshot.copyWith(sleep: timer));
     if (timer case SleepAfterMinutes(:final minutes)) {
       _sleepTimer = Timer(Duration(minutes: minutes), () {
-        if (_snapshot.isPlaying) toggle();
+        pause();
         _set(_snapshot.copyWith(sleep: null));
       });
     }
@@ -325,6 +411,8 @@ class QueuePlayerController implements PlayerController {
 
   @override
   void dispose() {
+    _disposed = true;
+    ++_loadToken;
     _skipTimer?.cancel();
     _sleepTimer?.cancel();
     for (final s in _subs) {

@@ -21,9 +21,12 @@ class YoutubeGateway {
   YoutubeExplode? _yt;
   Future<YoutubeExplode>? _starting;
 
-  /// On PC, a Deno install unlocks YouTube's JS challenges (more formats,
-  /// fewer 403s). Phones run without it.
-  Future<YoutubeExplode> get client => _starting ??= _start();
+  /// On desktop, Deno unlocks additional signature-protected formats.
+  Future<YoutubeExplode> get client =>
+      _starting ??= _start().catchError((Object e) {
+        _starting = null;
+        throw e;
+      });
 
   Future<YoutubeExplode> _start() async {
     BaseJSChallengeSolver? solver;
@@ -74,7 +77,9 @@ class YoutubeGateway {
     _ => ApiException(ApiErrorCode.extractionFailed, '$e'),
   };
 
-  void close() => _yt?.close();
+  void close() {
+    _yt?.close();
+  }
 }
 
 /// Looks [name] up in PATH (and common install dirs). Null when missing.
@@ -96,17 +101,101 @@ Future<String?> findExecutable(String name) async {
   return null;
 }
 
-/// Audio manifest, fast path first: the `androidSdkless` client without the
-/// watch page answers in ~0.3 s; the full lookup (watch page + several
-/// clients) takes seconds and is kept as a fallback (RNF-02).
-Future<yt.StreamManifest> audioManifest(yt.YoutubeExplode client, String videoId) async {
-  try {
-    final m = await client.videos.streams.getManifest(
+/// yt-dlp's `visionos` client. For licensed music it is the only client
+/// whose stream URLs serve the whole file without a PO token or JS player;
+/// ANDROID URLs answer 403 after the first ~1 MB. Needs the watch page.
+/// Keep in sync with yt-dlp's `INNERTUBE_CLIENTS['visionos']`.
+const visionOsClient = yt.YoutubeApiClient(
+  {
+    'context': {
+      'client': {
+        'clientName': 'VISIONOS',
+        'clientVersion': '1.02',
+        'deviceMake': 'Apple',
+        'deviceModel': 'RealityDevice17,1',
+        'userAgent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15',
+        'osName': 'visionOS',
+        'osVersion': '26.5.23O471',
+        'hl': 'en',
+        'timeZone': 'UTC',
+        'utcOffsetMinutes': 0,
+      },
+    },
+  },
+  'https://www.youtube.com/youtubei/v1/player?prettyPrint=false',
+  headers: {'X-YouTube-Client-Name': '101', 'X-YouTube-Client-Version': '1.02'},
+);
+
+/// Audio manifest whose streams can be read to the end (RF-07, RNF-02).
+/// Tries VISIONOS (~1 s), then the fast `androidSdkless` client (~0.3 s, full
+/// streams only for non-licensed videos), then the full multi-client lookup.
+/// Throws `extractionFailed` when no client serves a whole stream, so the
+/// caller can fall back to yt-dlp.
+Future<yt.StreamManifest> audioManifest(
+  yt.YoutubeExplode client,
+  String videoId,
+) async {
+  final attempts = <Future<yt.StreamManifest> Function()>[
+    () =>
+        client.videos.streams.getManifest(videoId, ytClients: [visionOsClient]),
+    () => client.videos.streams.getManifest(
       videoId,
       ytClients: [yt.YoutubeApiClient.androidSdkless],
       requireWatchPage: false,
-    );
-    if (m.audioOnly.isNotEmpty) return m;
-  } catch (_) {}
-  return client.videos.streams.getManifest(videoId);
+    ),
+    () => client.videos.streams.getManifest(videoId),
+  ];
+  Object? lastError;
+  for (final attempt in attempts) {
+    try {
+      final m = await attempt();
+      if (m.audioOnly.isEmpty) continue;
+      if (await servesWholeStream(m.audioOnly.sortByBitrate().first)) {
+        return m;
+      }
+    } on SocketException {
+      rethrow;
+    } on http.ClientException {
+      rethrow;
+    } on TimeoutException {
+      rethrow;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  if (lastError != null) {
+    final mapped = YoutubeGateway.mapError(lastError);
+    if (mapped.code != ApiErrorCode.extractionFailed) throw mapped;
+  }
+  throw const ApiException(
+    ApiErrorCode.extractionFailed,
+    'YouTube solo entregó el inicio de la canción.',
+  );
+}
+
+/// Reads the last byte: restricted URLs serve the start and answer 403
+/// further in. Only YouTube media URLs with a known length are checked.
+Future<bool> servesWholeStream(
+  yt.StreamInfo info, [
+  http.Client? client,
+]) async {
+  final url = info.url;
+  final length = int.tryParse(url.queryParameters['clen'] ?? '');
+  if (!url.host.endsWith('.googlevideo.com') || length == null || length < 2) {
+    return true;
+  }
+  final httpClient = client ?? http.Client();
+  try {
+    final request = http.Request('GET', url)
+      ..headers.addAll(yt.YoutubeHttpClient.defaultHeaders)
+      ..headers['Range'] = 'bytes=${length - 1}-${length - 1}';
+    final response = await httpClient
+        .send(request)
+        .timeout(const Duration(seconds: 15));
+    await response.stream.drain<void>();
+    return response.statusCode == 206 || response.statusCode == 200;
+  } finally {
+    if (client == null) httpClient.close();
+  }
 }

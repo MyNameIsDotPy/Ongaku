@@ -35,6 +35,9 @@ class SimulatedEngine implements PlaybackEngine {
   Stream<void> get completed => _completed.stream;
   @override
   Stream<bool> get buffering => _buffering.stream;
+
+  @override
+  Stream<bool> get playing => const Stream.empty();
   @override
   Stream<Object> get errors => _errors.stream;
 
