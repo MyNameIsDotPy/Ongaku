@@ -3,7 +3,7 @@
     <base-config cleartextTrafficPermitted="false" />
     <!-- just_audio serves YouTube byte ranges locally; upstream stays HTTPS. -->
     <domain-config cleartextTrafficPermitted="true">
-        <domain>127.0.0.1</domain>
-        <domain>localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
     </domain-config>
 </network-security-config>
