@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../models/api_error.dart';
 import '../../models/app_settings.dart';
 import '../../models/connection_test.dart';
@@ -23,10 +25,13 @@ class LocalBackendClient implements BackendClient {
         if (m.audioOnly.isEmpty) {
           throw const ApiException(ApiErrorCode.extractionFailed);
         }
-      });
+      }).timeout(const Duration(seconds: 40));
       return ConnectionTestResult.success(latencyMs: watch.elapsedMilliseconds);
     } on ApiException catch (e) {
       return ConnectionTestResult.failure(code: e.code);
+    } on TimeoutException {
+      // A request that never answers must not leave the spinner running.
+      return ConnectionTestResult.failure(code: ApiErrorCode.backendOffline);
     }
   }
 }
