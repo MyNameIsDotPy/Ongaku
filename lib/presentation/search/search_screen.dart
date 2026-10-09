@@ -645,13 +645,13 @@ class _TopAndSongs extends ConsumerWidget {
         a.avatarUrl ?? a.albums.firstOrNull?.coverUrl ?? '',
         Routes.artist(a.id),
       );
-      // Search results carry no songs: load the artist, then start radio.
+      // Search results carry no songs: load the artist, then play their songs.
       play = () async {
         final full = a.popular.isNotEmpty
             ? a
             : await ref.read(artistProvider(a.id).future);
         if (full.popular.isNotEmpty && context.mounted) {
-          await ref.startRadio(context, full.popular.first);
+          player.play(full.popular, from: full.name);
         }
       };
     } else if (r.albums.isNotEmpty) {

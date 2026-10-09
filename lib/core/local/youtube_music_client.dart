@@ -187,6 +187,50 @@ class YoutubeMusicClient {
     );
   }
 
+  // ── Radio ──
+
+  /// Song radio: YouTube Music's own "similar songs" queue for [videoId]
+  /// (`RDAMVM` + id). It starts with the song itself. Unlike the YouTube
+  /// mix (`RD` + id) it holds songs with their real lengths and artists.
+  Future<List<Track>> radio(String videoId) async {
+    final res = await _post('next', {
+      'videoId': videoId,
+      'playlistId': 'RDAMVM$videoId',
+    });
+    final panel = _first(res, 'playlistPanelRenderer');
+    return [
+      for (final it in (panel?['contents'] as List? ?? const []))
+        ?_radioItem(
+          it is Map ? it['playlistPanelVideoRenderer'] as Map? : null,
+        ),
+    ];
+  }
+
+  Track? _radioItem(Map? i) {
+    if (i == null) return null;
+    final videoId = _at(i, ['navigationEndpoint', 'watchEndpoint', 'videoId']);
+    if (videoId is! String) return null;
+    final artistRun = _runs(i['longBylineText'])
+        .where(
+          (r) => _browseId(r['navigationEndpoint'])?.startsWith('UC') ?? false,
+        )
+        .firstOrNull;
+    final artist = artistRun?['text'] as String?;
+    return Track(
+      videoId: videoId,
+      title: _text(i['title']),
+      artists: [
+        ArtistRef(
+          id: _browseId(artistRun?['navigationEndpoint']) ?? '',
+          name: (artist ?? _text(i['shortBylineText'])).trim(),
+        ),
+      ],
+      duration: YoutubeMapping.parseDuration(_text(i['lengthText'])),
+      coverUrl:
+          _thumb(i['thumbnail'], size: 544) ?? YoutubeMapping.cover(videoId),
+    );
+  }
+
   // ── Parsing ──
 
   Track? _songFromItem(Map? i) {

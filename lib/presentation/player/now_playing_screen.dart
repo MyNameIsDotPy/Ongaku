@@ -142,10 +142,10 @@ class _Aura extends StatefulWidget {
 }
 
 class _AuraState extends State<_Aura> with SingleTickerProviderStateMixin {
-  // Shockwave from the cover when the track changes.
+  // Shockwave from the cover when the track changes (3 s, as in the design).
   late final _ripple = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1400),
+    duration: const Duration(milliseconds: 3000),
   );
 
   @override

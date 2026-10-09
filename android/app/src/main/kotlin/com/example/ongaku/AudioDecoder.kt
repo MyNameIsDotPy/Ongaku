@@ -15,6 +15,9 @@ import java.util.concurrent.Executors
 /// Decodes an audio file to mono 16-bit PCM at the requested rate for beat
 /// analysis (`ongaku/audio_decoder`). Runs off the main thread.
 object AudioDecoder {
+    /// Same limit as `YoutubeMapping.maxSongLength` in Dart.
+    private const val MAX_SECONDS = 12 * 60
+
     private val executor = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
 
@@ -48,6 +51,8 @@ object AudioDecoder {
 
         val out = ByteArrayOutputStream()
         val resampler = Resampler(targetRate, out)
+        // Stop at the longest song: a multi-hour file would exhaust memory.
+        val maxBytes = MAX_SECONDS * targetRate * 2
         var channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
         var rate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
         var float = false
@@ -88,7 +93,7 @@ object AudioDecoder {
                         resampler.add(sum / channels, rate)
                     }
                     codec.releaseOutputBuffer(index, false)
-                    if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
+                    if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0 || out.size() >= maxBytes) break
                 }
             }
         } finally {

@@ -7,6 +7,14 @@ abstract final class YoutubeMapping {
   /// YouTube Music albums are auto-generated playlists with this prefix.
   static bool isAlbumId(String playlistId) => playlistId.startsWith('OLAK5uy_');
 
+  /// Longer videos are mixes, podcasts or hour-long remixes, not songs. It
+  /// also caps how much audio beat analysis decodes (see `AudioDecoder`).
+  static const maxSongLength = Duration(minutes: 12);
+
+  /// A known length that fits a song. Unknown lengths (zero) do not.
+  static bool isSongLength(Duration d) =>
+      d > Duration.zero && d <= maxSongLength;
+
   /// Max-res thumbnail; the cover widget falls back to hqdefault when a video
   /// has none.
   static String cover(String videoId) =>

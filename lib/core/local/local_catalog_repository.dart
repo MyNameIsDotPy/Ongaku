@@ -61,7 +61,7 @@ class LocalCatalogRepository implements CatalogRepository {
       soft(() => _music.searchArtists(q)),
       _youtubePlaylists(q),
     ]);
-    final songs = results[0].cast<Track>();
+    final songs = _songsOnly(results[0].cast<Track>());
     final albums = results[1].cast<Album>();
     final artists = results[2].cast<Artist>();
     final lists = results[3].cast<Playlist>();
@@ -199,9 +199,10 @@ class LocalCatalogRepository implements CatalogRepository {
           }
         }
         final n = normalize(q);
-        if (artists.isEmpty) artists.addAll(_artistsFrom(tracks, n));
+        final songs = _songsOnly(tracks);
+        if (artists.isEmpty) artists.addAll(_artistsFrom(songs, n));
         return SearchResults(
-          tracks: tracks,
+          tracks: songs,
           albums: albums,
           artists: artists,
           playlists: [
@@ -320,9 +321,26 @@ class LocalCatalogRepository implements CatalogRepository {
     );
   });
 
-  /// RF-15: YouTube's own mix for the song, else its related videos.
+  /// RF-15: YouTube Music's song radio (songs, not mixes). When that fails,
+  /// YouTube's mix for the song, else its related videos.
   @override
-  Future<List<Track>> radio(String videoId) => _gateway((client) async {
+  Future<List<Track>> radio(String videoId) async {
+    List<Track> songs = const [];
+    try {
+      songs = await _gateway((_) => _music.radio(videoId));
+    } on ApiException catch (e) {
+      if (e.code == ApiErrorCode.backendOffline) rethrow;
+    }
+    if (songs.length < 2) {
+      songs = await _gateway((client) => _youtubeRadio(client, videoId));
+    }
+    return _songsOnly(songs);
+  }
+
+  Future<List<Track>> _youtubeRadio(
+    yt.YoutubeExplode client,
+    String videoId,
+  ) async {
     try {
       final mix = await client.playlists
           .getVideos('RD$videoId')
@@ -339,7 +357,23 @@ class LocalCatalogRepository implements CatalogRepository {
       for (final v in (related ?? const <yt.Video>[]).take(24))
         YoutubeMapping.fromVideo(v),
     ];
-  });
+  }
+
+  /// Only songs: a known length that fits a song, and one version per
+  /// artist and title (no covers or repeats of the same song).
+  static List<Track> _songsOnly(Iterable<Track> tracks) {
+    final ids = <String>{};
+    final names = <String>{};
+    return [
+      for (final t in tracks)
+        if (YoutubeMapping.isSongLength(t.duration) &&
+            ids.add(t.videoId) &&
+            names.add(
+              '${normalize(t.title)}|${normalize(t.primaryArtist.name)}',
+            ))
+          t,
+    ];
+  }
 
   @override
   Future<Lyrics?> lyrics(String videoId) async {
@@ -370,9 +404,12 @@ class LocalCatalogRepository implements CatalogRepository {
 
   /// Analysed from the song's audio; calm (no pulses) until it is ready
   /// or when it cannot be analysed.
+  /// Only song-length tracks: decoding a multi-hour mix would exhaust memory.
   @override
-  Future<BeatMap> beatMap(Track track) async =>
-      await _beats?.beatMap(track.videoId) ?? BeatMap.calm;
+  Future<BeatMap> beatMap(Track track) async {
+    if (!YoutubeMapping.isSongLength(track.duration)) return BeatMap.calm;
+    return await _beats?.beatMap(track.videoId) ?? BeatMap.calm;
+  }
 
   /// Channels behind the songs, most frequent first, keeping those whose
   /// name matches the query (YouTube's channel search fails upstream).

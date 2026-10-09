@@ -19,18 +19,17 @@ import 'routes.dart';
 final _rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 
-/// Views inside the shell cross-fade; their sections then rise in staggered,
-/// and card artwork flies into the detail header (Hero).
+/// Views inside the shell fade through (old out, then new in, so text never
+/// overlaps); their sections then rise in staggered, and card artwork flies
+/// into the detail header (Hero).
 Page<void> _view(GoRouterState state, Widget child) =>
     CustomTransitionPage<void>(
       key: state.pageKey,
       child: child,
       transitionDuration: const Duration(milliseconds: 450),
       reverseTransitionDuration: const Duration(milliseconds: 250),
-      transitionsBuilder: (context, animation, _, child) => FadeTransition(
-        opacity: CurvedAnimation(parent: animation, curve: OngakuMotion.ease),
-        child: child,
-      ),
+      transitionsBuilder: (context, animation, _, child) =>
+          fadeThrough(animation, child),
     );
 
 final routerProvider = Provider<GoRouter>((ref) {

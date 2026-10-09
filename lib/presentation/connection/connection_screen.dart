@@ -258,9 +258,9 @@ class _ConnectionScreenState extends ConsumerState<ConnectionScreen> {
                   AnimatedSwitcher(
                     duration: OngakuMotion.medium,
                     switchInCurve: OngakuMotion.ease,
-                    transitionBuilder: (child, a) => FadeTransition(
-                      opacity: a,
-                      child: SlideTransition(
+                    transitionBuilder: (child, a) => fadeThrough(
+                      a,
+                      SlideTransition(
                         position: Tween(
                           begin: const Offset(0, 0.03),
                           end: Offset.zero,
