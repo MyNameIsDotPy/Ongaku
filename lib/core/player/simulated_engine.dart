@@ -89,6 +89,15 @@ class SimulatedEngine implements PlaybackEngine {
     }
   }
 
+  double _volume = 1;
+
+  @override
+  double get volume => _volume;
+  @override
+  Future<void> setVolume(double volume) async {
+    _volume = volume.clamp(0.0, 1.0);
+  }
+
   @override
   Future<void> stop() async {
     _clock

@@ -398,6 +398,13 @@ class QueuePlayerController implements PlayerController {
   );
 
   @override
+  double get volume => _engine.volume;
+
+  @override
+  void setVolume(double volume) =>
+      unawaited(_engine.setVolume(volume.clamp(0.0, 1.0)));
+
+  @override
   void setSleepTimer(SleepTimer? timer) {
     _sleepTimer?.cancel();
     _set(_snapshot.copyWith(sleep: timer));

@@ -30,5 +30,9 @@ abstract interface class PlayerController {
   /// Drops everything after the current track.
   void clearUpcoming();
   void setSleepTimer(SleepTimer? timer);
+
+  /// Output level, 0–1 (desktop bar).
+  double get volume;
+  void setVolume(double volume);
   void dispose();
 }

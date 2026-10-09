@@ -10,6 +10,10 @@ abstract interface class PlaybackEngine {
   Future<void> seek(Duration position);
   Future<void> stop();
 
+  /// Output level, 0–1. Kept across loads.
+  double get volume;
+  Future<void> setVolume(double volume);
+
   Duration get position;
 
   /// Periodic position updates while playing.

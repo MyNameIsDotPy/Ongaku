@@ -59,6 +59,16 @@ class JustAudioEngine implements PlaybackEngine {
 
   bool _current(int generation) => !_disposed && generation == _generation;
 
+  double _volume = 1;
+
+  @override
+  double get volume => _volume;
+  @override
+  Future<void> setVolume(double volume) {
+    _volume = volume.clamp(0.0, 1.0);
+    return _player.setVolume(_volume);
+  }
+
   @override
   Duration get position => _player.position;
   @override

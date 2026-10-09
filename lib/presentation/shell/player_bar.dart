@@ -125,6 +125,8 @@ class PlayerBar extends ConsumerWidget {
                     onPressed: () => ref.toggleFavorite(context, t),
                   ),
                 ],
+                const _VolumeControl(),
+                const SizedBox(width: 8),
                 OngakuIconButton(
                   icon: OngakuIcons.lyrics,
                   size: OngakuIconButtonSize.small,
@@ -366,4 +368,50 @@ class BeatPulse extends StatelessWidget {
     builder: (context, levels, child) =>
         Transform.scale(scale: 1 + levels.beat * amount, child: child),
   );
+}
+
+/// Mute button and a level slider for the desktop bar.
+class _VolumeControl extends ConsumerWidget {
+  const _VolumeControl();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
+    final volume = ref.watch(volumeProvider);
+    final volumes = ref.read(volumeProvider.notifier);
+    final icon = volume == 0
+        ? Icons.volume_off_rounded
+        : volume < 0.5
+        ? Icons.volume_down_rounded
+        : Icons.volume_up_rounded;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: volume == 0 ? 'Activar sonido' : 'Silenciar',
+          visualDensity: VisualDensity.compact,
+          icon: Icon(icon, size: 18, color: c.muted),
+          onPressed: volumes.toggleMute,
+        ),
+        SizedBox(
+          width: 110,
+          child: SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 3,
+              activeTrackColor: c.fg,
+              inactiveTrackColor: c.fgSoft2,
+              thumbColor: c.fg,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+            ),
+            child: Slider(
+              value: volume,
+              semanticFormatterCallback: (v) => '${(v * 100).round()} %',
+              onChanged: volumes.set,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

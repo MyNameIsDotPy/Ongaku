@@ -97,6 +97,29 @@ final playerProvider = NotifierProvider<PlayerNotifier, PlayerSnapshot>(
 );
 
 /// Position updates (~10 Hz). Kept apart so only progress widgets rebuild.
+/// Output volume, 0–1 (desktop bar). Starts from the engine's level and is
+/// not kept across launches.
+class VolumeNotifier extends Notifier<double> {
+  double _lastAudible = 1;
+
+  @override
+  double build() => ref.read(playerControllerProvider).volume;
+
+  void set(double value) {
+    final v = value.clamp(0.0, 1.0);
+    ref.read(playerControllerProvider).setVolume(v);
+    if (v > 0) _lastAudible = v;
+    state = v;
+  }
+
+  /// Mutes, or restores the level from before the last mute.
+  void toggleMute() => set(state > 0 ? 0 : _lastAudible);
+}
+
+final volumeProvider = NotifierProvider<VolumeNotifier, double>(
+  VolumeNotifier.new,
+);
+
 final positionProvider = StreamProvider<Duration>((ref) async* {
   final c = ref.watch(playerControllerProvider);
   yield c.position;

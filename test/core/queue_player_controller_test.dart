@@ -24,6 +24,10 @@ class Engine implements PlaybackEngine {
   int stops = 0;
   int pauses = 0;
   @override
+  double volume = 1;
+  @override
+  Future<void> setVolume(double value) async => volume = value;
+  @override
   Future<void> load(Track track, {Duration from = Duration.zero}) {
     final pending = Completer<void>();
     loads.add(pending);
@@ -74,6 +78,15 @@ void main() {
     queue = QueuePlayerController(engine);
   });
   tearDown(() => queue.dispose());
+
+  test('volume is kept by the engine and clamped to 0-1', () async {
+    expect(queue.volume, 1);
+    queue.setVolume(0.4);
+    expect(queue.volume, 0.4);
+    expect(engine.volume, 0.4);
+    queue.setVolume(1.7);
+    expect(queue.volume, 1);
+  });
 
   test('pause while loading prevents autoplay', () async {
     queue.play([track]);
