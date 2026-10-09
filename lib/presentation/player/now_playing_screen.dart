@@ -42,6 +42,21 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     }
   }
 
+  /// Header that closes the sheet when dragged down.
+  Widget _header(Track track) => GestureDetector(
+    behavior: HitTestBehavior.translucent,
+    onVerticalDragUpdate: (d) =>
+        setState(() => _drag = math.max(0, _drag + d.delta.dy)),
+    onVerticalDragEnd: (_) {
+      if (_drag > 110) {
+        _close();
+      } else {
+        setState(() => _drag = 0);
+      }
+    },
+    child: _Header(onClose: _close, track: track),
+  );
+
   @override
   Widget build(BuildContext context) {
     final track = ref.watch(currentTrackProvider);
@@ -87,28 +102,20 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       SafeArea(
                         child: Padding(
                           padding: _contentPadding(context),
-                          child: Column(
-                            children: [
-                              GestureDetector(
-                                behavior: HitTestBehavior.translucent,
-                                onVerticalDragUpdate: (d) => setState(
-                                  () => _drag = math.max(0, _drag + d.delta.dy),
+                          child: OngakuBreakpoints.isLandscapePhone(context)
+                              ? _LandscapeBody(
+                                  track: track,
+                                  header: _header(track),
+                                )
+                              : Column(
+                                  children: [
+                                    _header(track),
+                                    if (OngakuBreakpoints.isCompact(context))
+                                      const _ModeTabs(),
+                                    Expanded(child: _Stage(track: track)),
+                                    _Controls(track: track),
+                                  ],
                                 ),
-                                onVerticalDragEnd: (_) {
-                                  if (_drag > 110) {
-                                    _close();
-                                  } else {
-                                    setState(() => _drag = 0);
-                                  }
-                                },
-                                child: _Header(onClose: _close, track: track),
-                              ),
-                              if (OngakuBreakpoints.isCompact(context))
-                                const _ModeTabs(),
-                              Expanded(child: _Stage(track: track)),
-                              _Controls(track: track),
-                            ],
-                          ),
                         ),
                       ),
                     ],
@@ -291,6 +298,67 @@ Future<void> showSleepTimerMenu(BuildContext anchor, WidgetRef ref) async {
     default:
       player.setSleepTimer(SleepTimer.minutes(int.parse(k)));
       showOngakuToast(anchor, 'Se pausará en $k minutos');
+  }
+}
+
+/// Phone turned sideways: the cover and its title on the left; header,
+/// mode tabs, the lyrics or queue panel and the controls on the right.
+class _LandscapeBody extends ConsumerWidget {
+  const _LandscapeBody({required this.track, required this.header});
+
+  final Track track;
+  final Widget header;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(nowPlayingModeProvider);
+    final side = switch (mode) {
+      NowPlayingMode.lyrics => LyricsView(
+        key: const ValueKey('lyrics'),
+        track: track,
+      ),
+      NowPlayingMode.queue => const QueueView(
+        key: ValueKey('queue'),
+        onDark: true,
+      ),
+      NowPlayingMode.cover => const SizedBox.shrink(key: ValueKey('none')),
+    };
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          flex: 3,
+          child: LayoutBuilder(
+            builder: (context, box) {
+              // The cover plus its title and artist below it.
+              final cover = math
+                  .min(box.maxHeight - 90, box.maxWidth - 16)
+                  .clamp(120.0, 520.0);
+              return Center(
+                child: _ArtColumn(track: track, size: cover),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          flex: 6,
+          child: Column(
+            children: [
+              header,
+              const _ModeTabs(),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  child: side,
+                ),
+              ),
+              _Controls(track: track),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -576,7 +644,12 @@ class _Controls extends ConsumerWidget {
     final player = ref.read(playerProvider.notifier);
     final mode = ref.watch(nowPlayingModeProvider);
     final modes = ref.read(nowPlayingModeProvider.notifier);
-    final compact = OngakuBreakpoints.isCompact(context);
+    // Landscape phones are wider than the compact breakpoint: keep the
+    // compact row, which fits. Letra, Cola and the timer stay in the tabs and
+    // the "..." menu.
+    final compact =
+        OngakuBreakpoints.isCompact(context) ||
+        OngakuBreakpoints.isLandscapePhone(context);
     final c = context.colors;
     final note = s.status == PlaybackStatus.error
         ? s.error?.message ?? s.error?.code.description ?? ''

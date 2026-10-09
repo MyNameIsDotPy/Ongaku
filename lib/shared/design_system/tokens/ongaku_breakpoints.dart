@@ -7,4 +7,11 @@ abstract final class OngakuBreakpoints {
 
   static bool isCompact(BuildContext context) =>
       MediaQuery.sizeOf(context).width <= compact;
+
+  /// A phone turned sideways: wide enough to be compact, but too short for
+  /// the portrait stack (about 360 dp of height).
+  static bool isLandscapePhone(BuildContext context) {
+    final s = MediaQuery.sizeOf(context);
+    return s.width > s.height && s.height < 600;
+  }
 }
