@@ -28,8 +28,13 @@ Page<void> _view(GoRouterState state, Widget child) =>
       child: child,
       transitionDuration: const Duration(milliseconds: 450),
       reverseTransitionDuration: const Duration(milliseconds: 250),
-      transitionsBuilder: (context, animation, _, child) =>
-          fadeThrough(animation, child),
+      // The solid background goes under the fade: while the new view fades
+      // in, the previous view is still painted underneath, and it must stay
+      // hidden instead of showing through.
+      transitionsBuilder: (context, animation, _, child) => ColoredBox(
+        color: context.colors.bg,
+        child: fadeThrough(animation, child),
+      ),
     );
 
 final routerProvider = Provider<GoRouter>((ref) {
