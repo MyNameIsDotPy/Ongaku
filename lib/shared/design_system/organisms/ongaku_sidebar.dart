@@ -47,62 +47,64 @@ class _OngakuSidebarState extends State<OngakuSidebar> with IndicatorMeasure {
         border: Border(right: BorderSide(color: c.border)),
       ),
       padding: const EdgeInsets.fromLTRB(12, 18, 12, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 18),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: OngakuPressable(
-                onTap: widget.onBrand,
-                hoverColor: Colors.transparent,
-                padding: const EdgeInsets.all(6),
-                child: const OngakuBrand(),
-              ),
-            ),
-          ),
-          Stack(
-            key: stackKey,
-            children: [
-              ElasticIndicator(
-                span: indicatorSpan,
-                axis: Axis.vertical,
-                crossStart: 0,
-                crossEnd: 0,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: c.fgSoft2,
-                    borderRadius: OngakuRadii.mdAll,
-                  ),
+      // Scrolls instead of overflowing when the window is short (landscape
+      // phones).
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 18),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: OngakuPressable(
+                  onTap: widget.onBrand,
+                  hoverColor: Colors.transparent,
+                  padding: const EdgeInsets.all(6),
+                  child: const OngakuBrand(),
                 ),
               ),
-              Column(
-                children: [
-                  for (final d in NavDestination.values)
-                    Padding(
-                      key: keyFor(d),
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: _NavItem(
-                        destination: d,
-                        selected: d == widget.current,
-                        onTap: () => widget.onNavigate(d),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 18, 10, 6),
-            child: Text(
-              'TUS PLAYLISTS',
-              style: OngakuTypography.eyebrow(context),
             ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
+            Stack(
+              key: stackKey,
+              children: [
+                ElasticIndicator(
+                  span: indicatorSpan,
+                  axis: Axis.vertical,
+                  crossStart: 0,
+                  crossEnd: 0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: c.fgSoft2,
+                      borderRadius: OngakuRadii.mdAll,
+                    ),
+                  ),
+                ),
+                Column(
+                  children: [
+                    for (final d in NavDestination.values)
+                      Padding(
+                        key: keyFor(d),
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: _NavItem(
+                          destination: d,
+                          selected: d == widget.current,
+                          onTap: () => widget.onNavigate(d),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 18, 10, 6),
+              child: Text(
+                'TUS PLAYLISTS',
+                style: OngakuTypography.eyebrow(context),
+              ),
+            ),
+            Column(
               children: [
                 for (final p in widget.playlists)
                   OngakuPressable(
@@ -133,12 +135,12 @@ class _OngakuSidebarState extends State<OngakuSidebar> with IndicatorMeasure {
                   ),
               ],
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 12, 10, 0),
-            child: ConnectionIndicator(online: widget.online),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 12, 10, 0),
+              child: ConnectionIndicator(online: widget.online),
+            ),
+          ],
+        ),
       ),
     );
   }
